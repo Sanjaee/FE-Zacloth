@@ -1,32 +1,14 @@
-# Use Node.js 18 Alpine image
-FROM node:18-alpine
+FROM node:20-alpine AS base
 
-# Install necessary packages
-RUN apk add --no-cache libc6-compat
-
-# Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+COPY package.json package-lock.json ./
+RUN npm install
 
-# Install ALL dependencies (including devDependencies for build)
-RUN npm ci
-
-# Copy source code
 COPY . .
 
-# Build the application
 RUN npm run build
 
-# Remove dev dependencies to reduce image size
-RUN npm prune --production
-
-# Expose port
 EXPOSE 3000
 
-# Set environment variables
-ENV NODE_ENV=production
-
-# Start the application
 CMD ["npm", "start"]
