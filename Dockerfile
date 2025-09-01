@@ -1,14 +1,24 @@
-FROM node:20-alpine AS base
-
+# Stage 1: Build
+FROM node:20-alpine AS builder
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+COPY package*.json ./
 RUN npm install
-
 COPY . .
-
 RUN npm run build
 
-EXPOSE 3000
+# Stage 2: Run minimal standalone
+FROM node:20-alpine AS runner
+WORKDIR /app
 
-CMD ["npm", "start"]
+# copy only necessary files
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+EXPOSE 3000
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+
+CMD ["node", "server.js"]
