@@ -38,9 +38,14 @@ jobs:
             # Navigate to project directory
             cd /root/zacloth
 
+            # Create .env file if not exists
+            cat > .env << 'ENVEOF'
+            NODE_ENV=production
+            NEXT_PUBLIC_API_URL=https://zacloth.com
+            ENVEOF
+
             # Create docker-compose.yml if not exists
             cat > docker-compose.yml << 'EOF'
-            version: '3.8'
             services:
               web:
                 image: zacloth-frontend:latest
@@ -63,17 +68,17 @@ jobs:
             docker image prune -f
 
             # Start new containers
-            docker-compose up --build -d
+            docker compose up --build -d
 
             # Wait for container to be healthy
             sleep 10
 
             # Check if container is running
-            if docker-compose ps | grep -q "Up"; then
+            if docker compose ps | grep -q "Up"; then
               echo "✅ Frontend deployment completed successfully!"
             else
               echo "❌ Frontend deployment failed!"
-              docker-compose logs
+              docker compose logs
               exit 1
             fi
 
