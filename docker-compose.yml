@@ -1,14 +1,9 @@
 version: '3.8'
 services:
   web:
-    image: zacloth-frontend:latest
+    build: .
     ports:
       - "3000:3000"
     restart: unless-stopped
     env_file:
       - .env
-    networks:
-      - zacloth-network
-networks:
-  zacloth-network:
-    driver: bridge
