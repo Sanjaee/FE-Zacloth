@@ -19,8 +19,10 @@ jobs:
 
       - name: Build Docker image
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-        working-directory: fe-zacloth
         run: |
+          # Navigate to frontend directory
+          cd fe-zacloth
+
           # Build Docker image
           docker build -t zacloth-frontend:${{ github.sha }} .
           docker tag zacloth-frontend:${{ github.sha }} zacloth-frontend:latest
@@ -37,7 +39,7 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             # Navigate to project directory
-            cd /var/www/zacloth-frontend
+            cd /root/zacloth
 
             # Create docker-compose.yml if not exists
             cat > docker-compose.yml << 'EOF'
