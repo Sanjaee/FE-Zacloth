@@ -20,9 +20,6 @@ jobs:
       - name: Build Docker image
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         run: |
-          # Navigate to frontend directory
-          cd fe-zacloth
-
           # Build Docker image
           docker build -t zacloth-frontend:${{ github.sha }} .
           docker tag zacloth-frontend:${{ github.sha }} zacloth-frontend:latest
