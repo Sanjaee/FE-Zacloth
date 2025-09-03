@@ -20,11 +20,17 @@ jobs:
       - name: Build Docker image
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         run: |
+          # Navigate to frontend directory
+          cd zacloth
+
           # Build Docker image
           docker build -t zacloth-frontend:${{ github.sha }} .
           docker tag zacloth-frontend:${{ github.sha }} zacloth-frontend:latest
 
-          echo "✅ Docker image built successfully"
+          # Save image to tar file for transfer
+          docker save zacloth-frontend:latest | gzip > zacloth-frontend.tar.gz
+
+          echo "✅ Docker image built and saved successfully"
 
       - name: Deploy to VPS
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
@@ -61,6 +67,9 @@ jobs:
                 driver: bridge
             EOF
 
+            # Load the new Docker image
+            docker load < zacloth-frontend.tar.gz
+
             # Stop and remove old containers
             docker compose down || true
 
@@ -68,7 +77,7 @@ jobs:
             docker image prune -f
 
             # Start new containers
-            docker compose up --build -d
+            docker compose up -d
 
             # Wait for container to be healthy
             sleep 10
