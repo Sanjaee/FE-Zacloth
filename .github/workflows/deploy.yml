@@ -1,0 +1,88 @@
+name: Deploy Frontend to Production with Docker
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        working-directory: fe-zacloth
+        run: |
+          # Build Docker image
+          docker build -t zacloth-frontend:${{ github.sha }} .
+          docker tag zacloth-frontend:${{ github.sha }} zacloth-frontend:latest
+
+          echo "✅ Docker image built successfully"
+
+      - name: Deploy to VPS
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            # Navigate to project directory
+            cd /var/www/zacloth-frontend
+
+            # Create docker-compose.yml if not exists
+            cat > docker-compose.yml << 'EOF'
+            version: '3.8'
+            services:
+              web:
+                image: zacloth-frontend:latest
+                ports:
+                  - "3000:3000"
+                restart: unless-stopped
+                env_file:
+                  - .env
+                networks:
+                  - zacloth-network
+            networks:
+              zacloth-network:
+                driver: bridge
+            EOF
+
+            # Stop and remove old containers
+            docker-compose down || true
+
+            # Remove old images to save space
+            docker image prune -f
+
+            # Start new containers
+            docker-compose up -d
+
+            # Wait for container to be healthy
+            sleep 10
+
+            # Check if container is running
+            if docker-compose ps | grep -q "Up"; then
+              echo "✅ Frontend deployment completed successfully!"
+            else
+              echo "❌ Frontend deployment failed!"
+              docker-compose logs
+              exit 1
+            fi
+
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ ${{ job.status }} == 'success' ]; then
+            echo "✅ Frontend deployment successful!"
+          else
+            echo "❌ Frontend deployment failed!"
+          fi
