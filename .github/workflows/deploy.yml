@@ -57,13 +57,13 @@ jobs:
             EOF
 
             # Stop and remove old containers
-            docker-compose down || true
+            docker compose down || true
 
             # Remove old images to save space
             docker image prune -f
 
             # Start new containers
-            docker-compose up -d
+            docker-compose up --build -d
 
             # Wait for container to be healthy
             sleep 10
