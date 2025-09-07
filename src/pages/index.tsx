@@ -1,3 +1,4 @@
+import { useState, useCallback } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import ProductView from "../components/products/ProductView";
 import { useProducts } from "../hooks/useProducts";
@@ -13,7 +14,29 @@ const geistMono = Geist_Mono({
 });
 
 export default function Home() {
-  const { products, isLoading, error } = useProducts();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [filters, setFilters] = useState({
+    search: "",
+    category: "",
+    gender: "",
+    sortBy: "name",
+    sortOrder: "asc" as "asc" | "desc",
+  });
+
+  const { products, pagination, isLoading, error } = useProducts({
+    page: currentPage,
+    limit: 12,
+    ...filters,
+  });
+
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+  }, []);
+
+  const handleFiltersChange = useCallback((newFilters: typeof filters) => {
+    setFilters(newFilters);
+    setCurrentPage(1); // Reset to first page when filters change
+  }, []);
 
   return (
     <div
@@ -42,7 +65,14 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <ProductView products={products} isLoading={isLoading} error={error} />
+        <ProductView
+          products={products}
+          pagination={pagination}
+          isLoading={isLoading}
+          error={error}
+          onPageChange={handlePageChange}
+          onFiltersChange={handleFiltersChange}
+        />
       </main>
 
       {/* Footer */}

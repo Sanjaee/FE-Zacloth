@@ -2,6 +2,20 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { Product } from "../../types/product";
 import { getProductsApiUrl } from "../../config/env";
 
+interface PaginationInfo {
+  currentPage: number;
+  totalPages: number;
+  totalCount: number;
+  limit: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
+interface ProductsResponse {
+  products: Product[];
+  pagination: PaginationInfo;
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -11,22 +25,51 @@ export default async function handler(
   }
 
   try {
+    // Get query parameters
+    const { page, limit, search, category, gender, sortBy, sortOrder } =
+      req.query;
+
+    // Build query string
+    const queryParams = new URLSearchParams();
+
+    if (page) queryParams.append("page", page as string);
+    if (limit) queryParams.append("limit", limit as string);
+    if (search) queryParams.append("search", search as string);
+    if (category) queryParams.append("category", category as string);
+    if (gender) queryParams.append("gender", gender as string);
+    if (sortBy) queryParams.append("sortBy", sortBy as string);
+    if (sortOrder) queryParams.append("sortOrder", sortOrder as string);
+
     // Get API URL from configuration
-    const apiUrl = getProductsApiUrl();
+    const baseUrl = getProductsApiUrl();
+    const apiUrl = `${baseUrl}?${queryParams.toString()}`;
+
+    // Debug logging
+    console.log(
+      "Environment API_BASE_URL:",
+      process.env.NEXT_PUBLIC_API_BASE_URL
+    );
+    console.log("Base URL from config:", baseUrl);
+    console.log("Full API URL:", apiUrl);
 
     // Fetch data from the real API
+    console.log("Fetching from:", apiUrl);
     const response = await fetch(apiUrl);
 
     if (!response.ok) {
       throw new Error(`API responded with status: ${response.status}`);
     }
 
-    const products: Product[] = await response.json();
+    const data: ProductsResponse = await response.json();
+    console.log("API Response:", {
+      productsCount: data.products?.length || 0,
+      pagination: data.pagination,
+    });
 
     // Set cache headers for better performance
     res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=600");
 
-    res.status(200).json(products);
+    res.status(200).json(data);
   } catch (error) {
     console.error("Error fetching products from API:", error);
 
