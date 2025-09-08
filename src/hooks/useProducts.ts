@@ -1,5 +1,6 @@
 import useSWR from "swr";
 import { Product } from "../types/product";
+import { config } from "../config/env";
 
 interface PaginationInfo {
   currentPage: number;
@@ -39,7 +40,7 @@ export function useProducts(params: UseProductsParams = {}) {
 
   const queryString = queryParams.toString();
   // Hit backend directly instead of going through Next.js API route
-  const url = `http://localhost:5000/products${
+  const url = `${config.api.baseUrl}/products${
     queryString ? `?${queryString}` : ""
   }`;
 
