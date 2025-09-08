@@ -43,12 +43,6 @@ export default async function handler(
     // Get API URL from configuration
     const baseUrl = getProductsApiUrl();
     const apiUrl = `${baseUrl}?${queryParams.toString()}`;
-
-    console.log("Base URL from config:", baseUrl);
-    console.log("Full API URL:", apiUrl);
-
-    // Fetch data from the real API
-    console.log("Fetching from:", apiUrl);
     const response = await fetch(apiUrl);
 
     if (!response.ok) {

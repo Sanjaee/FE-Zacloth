@@ -2,7 +2,7 @@
 export const config = {
   // API Configuration
   api: {
-    baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.zascript.com",
+    baseUrl: process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.zascript.com",
   },
 
   // App Configuration

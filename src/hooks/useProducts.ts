@@ -40,7 +40,7 @@ export function useProducts(params: UseProductsParams = {}) {
   const queryString = queryParams.toString();
   // Hit backend directly instead of going through Next.js API route
   const url = `${
-    process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.zascript.com"
+    process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.zascript.com"
   }/products${queryString ? `?${queryString}` : ""}`;
 
   const { data, error, isLoading, mutate } = useSWR<ProductsResponse>(url);
