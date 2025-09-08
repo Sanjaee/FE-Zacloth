@@ -44,11 +44,6 @@ export default async function handler(
     const baseUrl = getProductsApiUrl();
     const apiUrl = `${baseUrl}?${queryParams.toString()}`;
 
-    // Debug logging
-    console.log(
-      "Environment API_BASE_URL:",
-      process.env.NEXT_PUBLIC_API_BASE_URL
-    );
     console.log("Base URL from config:", baseUrl);
     console.log("Full API URL:", apiUrl);
 
