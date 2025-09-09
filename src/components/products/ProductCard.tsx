@@ -1,6 +1,5 @@
 import Image from "next/image";
 import { useRouter } from "next/router";
-import { useState } from "react";
 import { Badge } from "../ui/badge";
 import { Product } from "../../types/product";
 
@@ -10,7 +9,6 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const router = useRouter();
-  const [isNavigating, setIsNavigating] = useState(false);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -26,12 +24,9 @@ export default function ProductCard({ product }: ProductCardProps) {
       )
     : 0;
 
-  const handleClick = async () => {
-    setIsNavigating(true);
-    // Small delay to show loading state
-    setTimeout(() => {
-      router.push(`/${product.id}`);
-    }, 200);
+  const handleClick = () => {
+    // Direct navigation without loading state
+    router.push(`/${product.id}`);
   };
 
   const handleMouseEnter = () => {
@@ -39,23 +34,11 @@ export default function ProductCard({ product }: ProductCardProps) {
     router.prefetch(`/${product.id}`);
   };
 
-  const handleMouseLeave = () => {
-    // Reset loading state if user leaves before navigation completes
-    if (isNavigating) {
-      setTimeout(() => {
-        setIsNavigating(false);
-      }, 150);
-    }
-  };
-
   return (
     <div
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      className={`group relative bg-white rounded-lg shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100 cursor-pointer transform hover:scale-[1.02] ${
-        isNavigating ? "opacity-75 pointer-events-none scale-[0.98]" : ""
-      }`}
+      className="group relative bg-white rounded-lg shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100 cursor-pointer transform hover:scale-[1.02]"
     >
       {/* Image Container */}
       <div className="relative aspect-square overflow-hidden bg-gray-50">
@@ -151,18 +134,6 @@ export default function ProductCard({ product }: ProductCardProps) {
           )}
         </div>
       </div>
-
-      {/* Loading overlay */}
-      {isNavigating && (
-        <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10 animate-in fade-in duration-200">
-          <div className="flex flex-col items-center gap-2">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="text-sm text-gray-600 animate-pulse">
-              Memuat...
-            </span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
