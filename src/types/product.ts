@@ -5,6 +5,7 @@ export interface SkuData {
 }
 
 export interface Product {
+  id: string;
   isOnSale: boolean;
   catalogId: string;
   isNikeByYou: boolean;
