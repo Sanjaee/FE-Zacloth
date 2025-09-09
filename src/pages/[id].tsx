@@ -1,9 +1,10 @@
 import React from "react";
-import { GetServerSideProps } from "next";
 import { useRouter } from "next/router";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import ProductDetailSkeleton from "@/components/products/ProductDetailSkeleton";
+import { useProduct } from "@/hooks/useProduct";
 
 interface Product {
   id: string;
@@ -39,23 +40,28 @@ interface Product {
   };
 }
 
-interface ProductDetailPageProps {
-  product: Product;
-}
-
-const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ product }) => {
+const ProductDetailPage: React.FC = () => {
   const router = useRouter();
   const { toast } = useToast();
+  const { product, loading, error } = useProduct(router.query.id);
 
-  if (!product) {
+  // Show skeleton while loading
+  if (loading) {
+    return <ProductDetailSkeleton />;
+  }
+
+  // Show error state
+  if (error || !product) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            Produk Tidak Ditemukan
+            {error || "Produk Tidak Ditemukan"}
           </h1>
           <p className="text-gray-600 mb-6">
-            Produk yang Anda cari tidak ditemukan atau telah dihapus.
+            {error === "Produk tidak ditemukan"
+              ? "Produk yang Anda cari tidak ditemukan atau telah dihapus."
+              : "Terjadi kesalahan saat memuat data produk."}
           </p>
           <Button onClick={() => router.push("/")} variant="outline">
             Kembali ke Beranda
@@ -356,42 +362,6 @@ const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ product }) => {
       </div>
     </div>
   );
-};
-
-export const getServerSideProps: GetServerSideProps = async (context) => {
-  const { id } = context.params!;
-
-  try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_BACKEND_URL}/products/${id}`
-    );
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        return {
-          props: {
-            product: null,
-          },
-        };
-      }
-      throw new Error("Failed to fetch product");
-    }
-
-    const data = await response.json();
-
-    return {
-      props: {
-        product: data.product,
-      },
-    };
-  } catch (error) {
-    console.error("Error fetching product:", error);
-    return {
-      props: {
-        product: null,
-      },
-    };
-  }
 };
 
 export default ProductDetailPage;
