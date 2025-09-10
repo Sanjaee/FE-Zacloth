@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { Button } from "./ui/button";
 import {
@@ -20,6 +20,11 @@ export default function Navbar({ onSearchChange, searchTerm }: NavbarProps) {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
+
+  // Sync local search term with prop
+  useEffect(() => {
+    setLocalSearchTerm(searchTerm);
+  }, [searchTerm]);
 
   const handleSearchChange = (value: string) => {
     setLocalSearchTerm(value);
