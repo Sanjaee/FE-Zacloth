@@ -3,33 +3,28 @@ import { signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/router";
 import { Button } from "../components/ui/button";
 import { toast } from "../hooks/use-toast";
-import { useRedirect } from "../hooks/useRedirect";
 
 const LoginPage = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { callbackUrl } = router.query;
-  const { handlePostLoginRedirect } = useRedirect();
 
   // Redirect if already logged in
   useEffect(() => {
     const checkSession = async () => {
       const session = await getSession();
       if (session) {
-        // If there's a callback URL from middleware, redirect there
-        if (callbackUrl && typeof callbackUrl === "string") {
-          router.push(callbackUrl);
-          return;
+        // Simple redirect based on role
+        if (session.user.role === "admin") {
+          router.push("/admin");
+        } else {
+          router.push("/dashboard");
         }
-
-        // Otherwise use the redirect hook to handle stored URL or default redirect
-        handlePostLoginRedirect();
       }
     };
     checkSession();
-  }, [router, callbackUrl, handlePostLoginRedirect]);
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,14 +62,12 @@ const LoginPage = () => {
         // Get session to check role and redirect accordingly
         const session = await getSession();
 
-        // If there's a callback URL from middleware, redirect there
-        if (callbackUrl && typeof callbackUrl === "string") {
-          router.push(callbackUrl);
-          return;
+        // Simple redirect based on role
+        if (session?.user?.role === "admin") {
+          router.push("/admin");
+        } else {
+          router.push("/dashboard");
         }
-
-        // Otherwise use the redirect hook to handle stored URL or default redirect
-        handlePostLoginRedirect();
       }
     } catch (error) {
       toast({

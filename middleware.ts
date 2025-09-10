@@ -6,11 +6,9 @@ export default withAuth(
     const { pathname } = req.nextUrl;
     const token = req.nextauth.token;
 
-    // If user is not authenticated, redirect to login with callback URL
+    // If user is not authenticated, redirect to login
     if (!token) {
-      const loginUrl = new URL("/login", req.url);
-      loginUrl.searchParams.set("callbackUrl", pathname);
-      return NextResponse.redirect(loginUrl);
+      return NextResponse.redirect(new URL("/login", req.url));
     }
 
     // Role-based access control
@@ -52,5 +50,5 @@ export default withAuth(
 );
 
 export const config = {
-  matcher: ["/admin/:path*", "/dashboard/:path*", "/login"],
+  matcher: ["/admin/:path*", "/dashboard/:path*"],
 };

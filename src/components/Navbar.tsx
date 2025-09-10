@@ -36,11 +36,6 @@ export default function Navbar({ onSearchChange, searchTerm }: NavbarProps) {
   };
 
   const handleProfile = () => {
-    // Store current page in session storage for redirect after login
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem("redirectAfterLogin", router.asPath);
-    }
-
     if (session?.user?.role === "admin") {
       router.push("/admin");
     } else {
