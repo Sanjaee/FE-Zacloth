@@ -18,6 +18,14 @@ interface QRCodeData {
   profileUrl: string;
 }
 
+interface ApiResponse<T> {
+  success: boolean;
+  message?: string;
+  user?: T;
+  qrCode?: string;
+  profileUrl?: string;
+}
+
 const AdminIndex = () => {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
@@ -40,17 +48,14 @@ const AdminIndex = () => {
     setQrCodeData(null);
 
     try {
-      const response = await fetch("/api/admin/generate-user", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ username: username.trim() }),
-      });
+      // Import API client
+      const { api } = await import("../../../lib/api");
 
-      const data = await response.json();
+      const data = (await api.users.generate(
+        username.trim()
+      )) as ApiResponse<GeneratedUser>;
 
-      if (data.success) {
+      if (data.success && data.user) {
         setGeneratedUser(data.user);
         setUsername("");
 
@@ -72,11 +77,11 @@ const AdminIndex = () => {
           variant: "destructive",
         });
       }
-    } catch (err) {
-      setError("Network error occurred");
+    } catch (err: any) {
+      setError(err.message || "Network error occurred");
       toast({
         title: "Error",
-        description: "Network error occurred",
+        description: err.message || "Network error occurred",
         variant: "destructive",
       });
     } finally {
@@ -96,20 +101,22 @@ const AdminIndex = () => {
     setQrLoading(true);
     setError("");
     try {
-      const backendUrl =
-        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-      console.log("Generating QR for profile:", profileId);
-      console.log("Backend URL:", backendUrl);
+      // Import API client
+      const { api } = await import("../../../lib/api");
 
-      const response = await fetch(
-        `${backendUrl}/qr/profile/${profileId}/simple`
-      );
-      const data = await response.json();
+      console.log("Generating QR for profile:", profileId);
+
+      const data = (await api.qr.generateProfileSimple(
+        profileId
+      )) as ApiResponse<QRCodeData>;
 
       console.log("QR Response:", data);
 
       if (data.success) {
-        setQrCodeData(data);
+        setQrCodeData({
+          qrCode: data.qrCode!,
+          profileUrl: data.profileUrl!,
+        });
         toast({
           title: "Success",
           description: "QR Code berhasil dibuat!",
@@ -122,12 +129,15 @@ const AdminIndex = () => {
           variant: "destructive",
         });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("QR Generation Error:", err);
-      setError("Network error occurred while generating QR code");
+      setError(
+        err.message || "Network error occurred while generating QR code"
+      );
       toast({
         title: "Error",
-        description: "Network error occurred while generating QR code",
+        description:
+          err.message || "Network error occurred while generating QR code",
         variant: "destructive",
       });
     } finally {
