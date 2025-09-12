@@ -9,6 +9,7 @@ declare module "next-auth" {
       email?: string;
       name?: string;
       image?: string;
+      profileId?: string;
     };
     accessToken?: string;
     error?: string;
@@ -20,6 +21,7 @@ declare module "next-auth" {
     role: string;
     email?: string;
     name?: string;
+    profileId?: string;
     accessToken?: string;
     refreshToken?: string;
   }
@@ -30,6 +32,7 @@ declare module "next-auth/jwt" {
     id: string;
     username: string;
     role: string;
+    profileId?: string;
     accessToken?: string;
     refreshToken?: string;
     accessTokenExpires?: number;

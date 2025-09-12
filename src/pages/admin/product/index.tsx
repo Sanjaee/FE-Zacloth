@@ -2,10 +2,10 @@ import React from "react";
 import { GetServerSideProps } from "next";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
-import ProductForm from "@/components/admin/ProductForm";
+import { ProductManagement } from "@/components/admin/ProductManagement";
 
 const AdminProductPage: React.FC = () => {
-  return <ProductForm />;
+  return <ProductManagement />;
 };
 
 export const getServerSideProps: GetServerSideProps = async (context) => {

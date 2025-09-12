@@ -80,6 +80,7 @@ export const authOptions: NextAuthOptions = {
               email: data.user.email,
               role: data.user.role,
               name: data.user.profile?.fullName || data.user.username,
+              profileId: data.user.profile?.id,
               accessToken: data.accessToken,
               refreshToken: data.refreshToken,
             };
@@ -111,6 +112,7 @@ export const authOptions: NextAuthOptions = {
         token.username = user.username;
         token.id = user.id;
         token.role = user.role;
+        token.profileId = user.profileId;
         token.accessToken = user.accessToken;
         token.refreshToken = user.refreshToken;
         token.accessTokenExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
@@ -129,6 +131,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id as string;
         session.user.username = token.username as string;
         session.user.role = token.role as string;
+        session.user.profileId = token.profileId as string;
         session.accessToken = token.accessToken as string;
         session.error = token.error as string;
       }
