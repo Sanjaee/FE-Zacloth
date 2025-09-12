@@ -148,11 +148,7 @@ export function ProductManagement() {
       // Import API client
       const { api } = await import("../../lib/api");
 
-      const data = await api.products.create({
-        ...formData,
-        userId: session.user.id,
-        userRole: session.user.role,
-      });
+      const data = await api.products.create(formData);
 
       toast({
         title: "Success",

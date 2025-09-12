@@ -25,7 +25,7 @@ export class ApiClient {
       Origin: process.env.NEXTAUTH_URL || "http://localhost:3000",
       Referer: `${
         process.env.NEXTAUTH_URL || "http://localhost:3000"
-      }/admin/user`,
+      }/admin/product`,
     };
 
     if (session?.accessToken) {
