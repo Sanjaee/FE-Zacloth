@@ -10,8 +10,18 @@ async function refreshAccessToken(token: any) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "User-Agent": "Zacloth-Frontend/1.0",
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+          Accept: "application/json, text/plain, */*",
+          "Accept-Language": "en-US,en;q=0.9",
+          "Accept-Encoding": "gzip, deflate, br",
+          Connection: "keep-alive",
+          "Cache-Control": "no-cache",
           "X-Requested-With": "XMLHttpRequest",
+          Origin: process.env.NEXTAUTH_URL || "http://localhost:3000",
+          Referer: `${
+            process.env.NEXTAUTH_URL || "http://localhost:3000"
+          }/dashboard`,
         },
         body: JSON.stringify({
           refreshToken: token.refreshToken,
@@ -61,8 +71,18 @@ export const authOptions: NextAuthOptions = {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                "User-Agent": "Zacloth-Frontend/1.0",
+                "User-Agent":
+                  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                Accept: "application/json, text/plain, */*",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Accept-Encoding": "gzip, deflate, br",
+                Connection: "keep-alive",
+                "Cache-Control": "no-cache",
                 "X-Requested-With": "XMLHttpRequest",
+                Origin: process.env.NEXTAUTH_URL || "http://localhost:3000",
+                Referer: `${
+                  process.env.NEXTAUTH_URL || "http://localhost:3000"
+                }/login`,
               },
               body: JSON.stringify({
                 username: credentials.username,

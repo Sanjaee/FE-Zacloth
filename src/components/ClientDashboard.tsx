@@ -138,6 +138,12 @@ export function ClientDashboard() {
               </p>
             </div>
             <div className="flex items-center space-x-4">
+              <Button
+                onClick={() => router.push("/dashboard/update")}
+                variant="outline"
+              >
+                Update Profile
+              </Button>
               <div className="text-sm text-gray-500">
                 Role:{" "}
                 <span className="font-medium text-blue-600">

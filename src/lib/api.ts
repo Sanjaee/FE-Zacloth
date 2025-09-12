@@ -106,6 +106,9 @@ export const api = {
       apiClient.post("/users/login", { username, password }),
     refresh: (refreshToken: string) =>
       apiClient.post("/users/refresh", { refreshToken }),
+    getProfile: () => apiClient.get("/users/profile"),
+    updateProfile: (profileData: any) =>
+      apiClient.put("/users/profile", profileData),
   },
 
   // Product endpoints
