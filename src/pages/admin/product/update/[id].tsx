@@ -13,6 +13,16 @@ import {
 } from "../../../../components/ui/sidebar";
 import { ProductPreviewCard } from "../../../../components/admin/ProductPreviewCard";
 import { generateSlug } from "../../../../utils/slugGenerator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../../../../components/ui/alert-dialog";
 
 interface SkuData {
   size: string;
@@ -89,6 +99,12 @@ export default function ProductUpdateForm() {
   const [imageOrder, setImageOrder] = useState<number[]>([]);
   const [selectedMainImageIndex, setSelectedMainImageIndex] =
     useState<number>(0);
+  const [deletedImages, setDeletedImages] = useState<string[]>([]);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [imageToDelete, setImageToDelete] = useState<{
+    index: number;
+    data: any;
+  } | null>(null);
 
   // Fetch product data
   useEffect(() => {
@@ -406,10 +422,30 @@ export default function ProductUpdateForm() {
   };
 
   const removeExistingImage = (index: number) => {
+    const imageData = existingImageData[index];
+
+    // Set the image to delete and show dialog
+    setImageToDelete({ index, data: imageData });
+    setShowDeleteDialog(true);
+  };
+
+  const selectMainImage = (index: number) => {
+    setSelectedMainImageIndex(index);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (!imageToDelete) return;
+
+    const { index, data } = imageToDelete;
     const newExistingImages = existingImages.filter((_, i) => i !== index);
     const newExistingImageData = existingImageData.filter(
       (_, i) => i !== index
     );
+
+    // Add the deleted image to deletedImages state
+    if (data && data.imageUrl) {
+      setDeletedImages((prev) => [...prev, data.imageUrl]);
+    }
 
     setExistingImages(newExistingImages);
     setExistingImageData(newExistingImageData);
@@ -420,10 +456,22 @@ export default function ProductUpdateForm() {
     } else if (selectedMainImageIndex > index) {
       setSelectedMainImageIndex(selectedMainImageIndex - 1);
     }
+
+    // Show success message
+    toast({
+      title: "Gambar Dihapus",
+      description:
+        "Gambar akan dihapus dari server saat Anda menyimpan perubahan.",
+    });
+
+    // Close dialog and reset state
+    setShowDeleteDialog(false);
+    setImageToDelete(null);
   };
 
-  const selectMainImage = (index: number) => {
-    setSelectedMainImageIndex(index);
+  const handleDeleteCancel = () => {
+    setShowDeleteDialog(false);
+    setImageToDelete(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -464,6 +512,7 @@ export default function ProductUpdateForm() {
           altText: img.altText,
           order: index, // Use current order from the UI
         })),
+        deletedImages: deletedImages, // Add deleted images to the form data
         // Set main image URL based on selected main image
         imageUrl:
           existingImages.length > 0 &&
@@ -1291,6 +1340,20 @@ export default function ProductUpdateForm() {
                             </div>
                           </div>
                         )}
+                        {deletedImages.length > 0 && (
+                          <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-xs">
+                            <div className="text-red-800 font-medium">
+                              Gambar yang akan dihapus: {deletedImages.length}
+                            </div>
+                            <div className="text-red-600">
+                              {deletedImages.map((url, index) => (
+                                <div key={index} className="truncate">
+                                  • {url.split("/").pop()}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         <div className="text-xs text-gray-600 space-y-1">
                           <div>
                             • Gambar existing ditampilkan dengan badge hijau
@@ -1312,6 +1375,12 @@ export default function ProductUpdateForm() {
                           <div>
                             • Preview ini menunjukkan tampilan di halaman produk
                           </div>
+                          {deletedImages.length > 0 && (
+                            <div className="text-red-600 font-medium">
+                              • Gambar yang dihapus akan dihapus dari server
+                              saat disimpan
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1322,6 +1391,61 @@ export default function ProductUpdateForm() {
           </div>
         </div>
       </SidebarInset>
+
+      {/* Delete Confirmation Alert Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent className="sm:max-w-[425px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Konfirmasi Hapus Gambar</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus gambar{" "}
+              <span className="font-semibold text-gray-900">
+                "
+                {imageToDelete?.data?.altText ||
+                  `Image ${(imageToDelete?.index || 0) + 1}`}
+                "
+              </span>
+              ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="py-4">
+            <div className="flex items-center space-x-4">
+              {imageToDelete?.data && imageToDelete.index !== undefined && (
+                <img
+                  src={existingImages[imageToDelete.index]}
+                  alt={
+                    imageToDelete.data.altText ||
+                    `Image ${imageToDelete.index + 1}`
+                  }
+                  className="w-16 h-16 object-cover rounded border"
+                />
+              )}
+              <div className="flex-1">
+                <p className="text-sm text-gray-600">
+                  <strong>Peringatan:</strong> Gambar akan dihapus dari server
+                  dan tidak dapat dikembalikan.
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Perubahan akan disimpan saat Anda klik "Update Produk".
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDeleteCancel}>
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Hapus Gambar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SidebarProvider>
   );
 }
