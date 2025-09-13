@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import ProductDetailSkeleton from "@/components/products/ProductDetailSkeleton";
 import { useProduct } from "@/hooks/useProduct";
+import { ImageSlider } from "@/components/ui/ImageSlider";
 
 interface Product {
   id: string;
@@ -25,6 +26,12 @@ interface Product {
   updatedAt: string;
   genders: string[];
   subCategory: string[];
+  images: Array<{
+    id: string;
+    imageUrl: string;
+    altText?: string;
+    order: number;
+  }>;
   skuData: Array<{
     id: string;
     size: string;
@@ -94,25 +101,50 @@ const ProductDetailPage: React.FC = () => {
   };
 
   // Helper function to get the correct image URL
-  const getImageUrl = () => {
-    if (!product.imageUrl) {
+  const getImageUrl = (imageUrl: string) => {
+    if (!imageUrl) {
       return "/placeholder-image.svg"; // Fallback image
     }
 
     // If it's already a full URL, return as is
-    if (product.imageUrl.startsWith("http")) {
-      return product.imageUrl;
+    if (imageUrl.startsWith("http")) {
+      return imageUrl;
     }
 
     // If it's a local asset path, prepend the backend URL
-    if (product.imageUrl.startsWith("/assets/")) {
+    if (imageUrl.startsWith("/assets/")) {
       const backendUrl =
         process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-      return `${backendUrl}${product.imageUrl}`;
+      return `${backendUrl}${imageUrl}`;
     }
 
     // Default fallback
-    return product.imageUrl;
+    return imageUrl;
+  };
+
+  // Prepare images for ImageSlider
+  const getProductImages = () => {
+    const images = (product as any).images || [];
+
+    // If no images in the images array, fallback to main imageUrl
+    if (images.length === 0 && product.imageUrl) {
+      return [
+        {
+          id: "main-image",
+          imageUrl: getImageUrl(product.imageUrl),
+          altText: product.name,
+          order: 0,
+        },
+      ];
+    }
+
+    // Convert images to the format expected by ImageSlider
+    return images.map((img: any) => ({
+      id: img.id,
+      imageUrl: getImageUrl(img.imageUrl),
+      altText: img.altText || product.name,
+      order: img.order,
+    }));
   };
 
   return (
@@ -176,18 +208,15 @@ const ProductDetailPage: React.FC = () => {
         </nav>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Product Image */}
+          {/* Product Images */}
           <div className="space-y-4">
             <div className="aspect-square overflow-hidden rounded-lg bg-white shadow-lg">
-              <img
-                src={getImageUrl()}
-                alt={product.name}
-                className="h-full w-full object-cover object-center"
-                onError={(e) => {
-                  // Fallback to placeholder if image fails to load
-                  const target = e.target as HTMLImageElement;
-                  target.src = "/placeholder-image.svg";
-                }}
+              <ImageSlider
+                images={getProductImages()}
+                className="h-full"
+                showThumbnails={true}
+                showFullscreen={true}
+                autoPlay={false}
               />
             </div>
           </div>

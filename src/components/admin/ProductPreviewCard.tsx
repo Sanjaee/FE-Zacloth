@@ -1,11 +1,7 @@
-import Image from "next/image";
-import { Badge } from "../ui/badge";
+"use client";
 
-interface SkuData {
-  size: string;
-  sku: string;
-  gtin: string;
-}
+import React from "react";
+import { ImageSlider } from "../ui/ImageSlider";
 
 interface ProductFormData {
   isOnSale: boolean;
@@ -22,166 +18,166 @@ interface ProductFormData {
   prodigyId: string;
   imageUrl: string;
   genders: string[];
-  skuData: SkuData[];
+  skuData: Array<{
+    size: string;
+    sku: string;
+    gtin: string;
+  }>;
   subCategories: string[];
 }
 
 interface ProductPreviewCardProps {
   formData: ProductFormData;
-  imagePreview: string;
+  imagePreviews?: string[];
 }
 
 export function ProductPreviewCard({
   formData,
-  imagePreview,
+  imagePreviews = [],
 }: ProductPreviewCardProps) {
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-    }).format(price);
-  };
+  // Convert image previews to the format expected by ImageSlider
+  const images = (imagePreviews || []).map((preview, index) => ({
+    id: `preview-${index}`,
+    imageUrl: preview,
+    altText: `${formData.name || "Product"} - Image ${index + 1}`,
+    order: index,
+  }));
 
-  const discountPercentage =
-    formData.isOnSale && formData.fullPrice > 0
-      ? Math.round(
-          ((formData.fullPrice - formData.currentPrice) / formData.fullPrice) *
-            100
-        )
-      : 0;
-
-  // Helper function to get the correct image URL for preview
-  const getPreviewImageUrl = () => {
-    // If there's a preview image (uploaded file), use it
-    if (imagePreview) {
-      return imagePreview;
-    }
-
-    // If there's an existing image URL, use it
-    if (formData.imageUrl) {
-      // If it's already a full URL, return as is
-      if (formData.imageUrl.startsWith("http")) {
-        return formData.imageUrl;
-      }
-
-      // If it's a local asset path, prepend the backend URL
-      if (formData.imageUrl.startsWith("/assets/")) {
-        const backendUrl =
-          process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-        return `${backendUrl}${formData.imageUrl}`;
-      }
-
-      return formData.imageUrl;
-    }
-
-    // Default placeholder
-    return "/placeholder-image.svg";
-  };
+  // If no images, show placeholder
+  if (images.length === 0) {
+    return (
+      <div className="w-full max-w-sm bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="h-64 bg-gray-100 flex items-center justify-center">
+          <div className="text-center text-gray-500">
+            <div className="text-4xl mb-2">📷</div>
+            <p className="text-sm">Upload gambar untuk preview</p>
+          </div>
+        </div>
+        <div className="p-4">
+          <h3 className="font-semibold text-lg text-gray-800 mb-2">
+            {formData.name || "Nama Produk"}
+          </h3>
+          <div className="space-y-2 text-sm text-gray-600">
+            <p>
+              <span className="font-medium">Brand:</span>{" "}
+              {formData.brand || "Brand"}
+            </p>
+            <p>
+              <span className="font-medium">Kategori:</span>{" "}
+              {formData.category || "Kategori"}
+            </p>
+            <p>
+              <span className="font-medium">Warna:</span>{" "}
+              {formData.color || "Warna"}
+            </p>
+            <div className="flex justify-between items-center pt-2">
+              <span className="text-lg font-bold text-blue-600">
+                Rp {formData.currentPrice?.toLocaleString() || "0"}
+              </span>
+              {formData.isOnSale && (
+                <span className="text-sm text-gray-500 line-through">
+                  Rp {formData.fullPrice?.toLocaleString() || "0"}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="group relative bg-white rounded-lg shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100 transform hover:scale-[1.02] max-w-sm">
-      {/* Image Container */}
-      <div className="relative aspect-square overflow-hidden bg-gray-50">
-        <Image
-          src={getPreviewImageUrl()}
-          alt={formData.name || "Product Preview"}
-          fill
-          className="object-cover group-hover:scale-105 transition-transform duration-300"
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          onError={(e) => {
-            // Fallback to placeholder if image fails to load
-            const target = e.target as HTMLImageElement;
-            target.src = "/placeholder-image.svg";
-          }}
+    <div className="w-full max-w-sm bg-white rounded-lg shadow-md overflow-hidden">
+      {/* Image Slider */}
+      <div className="h-64">
+        <ImageSlider
+          images={images}
+          className="h-full"
+          showThumbnails={false}
+          showFullscreen={true}
+          autoPlay={false}
         />
-
-        {/* Sale Badge */}
-        {formData.isOnSale && discountPercentage > 0 && (
-          <div className="absolute top-2 left-2">
-            <Badge variant="destructive" className="text-xs font-semibold">
-              -{discountPercentage}%
-            </Badge>
-          </div>
-        )}
-
-        {/* Nike By You Badge */}
-        {formData.isNikeByYou && (
-          <div className="absolute top-2 right-2">
-            <Badge
-              variant="secondary"
-              className="text-xs font-semibold bg-black text-white"
-            >
-              Nike By You
-            </Badge>
-          </div>
-        )}
       </div>
 
       {/* Product Info */}
       <div className="p-4">
-        {/* Brand */}
-        <p className="text-sm font-medium text-gray-600 mb-1">
-          {formData.brand || "Brand"}
-        </p>
-
-        {/* Product Name */}
-        <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
-          {formData.name || "Product Name"}
+        <h3 className="font-semibold text-lg text-gray-800 mb-2">
+          {formData.name || "Nama Produk"}
         </h3>
 
-        {/* Category & Subcategory */}
-        <div className="flex flex-wrap gap-1 mb-3">
-          {formData.category && (
-            <Badge variant="outline" className="text-xs">
-              {formData.category}
-            </Badge>
-          )}
-          {formData.subCategories.map((sub, index) => (
-            <Badge key={index} variant="outline" className="text-xs">
-              {sub}
-            </Badge>
-          ))}
-        </div>
+        <div className="space-y-2 text-sm text-gray-600">
+          <p>
+            <span className="font-medium">Brand:</span>{" "}
+            {formData.brand || "Brand"}
+          </p>
+          <p>
+            <span className="font-medium">Kategori:</span>{" "}
+            {formData.category || "Kategori"}
+          </p>
+          <p>
+            <span className="font-medium">Warna:</span>{" "}
+            {formData.color || "Warna"}
+          </p>
+          <p>
+            <span className="font-medium">Negara:</span>{" "}
+            {formData.country || "Negara"}
+          </p>
 
-        {/* Gender */}
-        <div className="flex gap-1 mb-3">
-          {formData.genders.map((gender, index) => (
-            <Badge key={index} variant="secondary" className="text-xs">
-              {gender}
-            </Badge>
-          ))}
-        </div>
-
-        {/* Price */}
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-lg font-bold text-gray-900">
-            {formData.currentPrice > 0
-              ? formatPrice(formData.currentPrice)
-              : "Rp 0"}
-          </span>
-          {formData.isOnSale && formData.fullPrice > 0 && (
-            <span className="text-sm text-gray-500 line-through">
-              {formatPrice(formData.fullPrice)}
-            </span>
+          {/* Genders */}
+          {formData.genders.length > 0 && (
+            <p>
+              <span className="font-medium">Gender:</span>{" "}
+              {formData.genders.join(", ")}
+            </p>
           )}
-        </div>
 
-        {/* Available Sizes */}
-        <div className="flex flex-wrap gap-1">
-          {formData.skuData.slice(0, 4).map((sku, index) => (
-            <span
-              key={index}
-              className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded border"
-            >
-              {sku.size}
-            </span>
-          ))}
-          {formData.skuData.length > 4 && (
-            <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded border">
-              +{formData.skuData.length - 4}
-            </span>
+          {/* Sub Categories */}
+          {formData.subCategories.length > 0 && (
+            <p>
+              <span className="font-medium">Sub Kategori:</span>{" "}
+              {formData.subCategories.join(", ")}
+            </p>
           )}
+
+          {/* SKU Data */}
+          {formData.skuData.length > 0 && (
+            <div>
+              <span className="font-medium">SKU:</span>
+              <div className="mt-1 space-y-1">
+                {formData.skuData.map((sku, index) => (
+                  <div key={index} className="text-xs bg-gray-100 p-2 rounded">
+                    Size: {sku.size} | SKU: {sku.sku} | GTIN: {sku.gtin}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Price */}
+          <div className="flex justify-between items-center pt-2 border-t">
+            <span className="text-lg font-bold text-blue-600">
+              Rp {formData.currentPrice?.toLocaleString() || "0"}
+            </span>
+            {formData.isOnSale && (
+              <span className="text-sm text-gray-500 line-through">
+                Rp {formData.fullPrice?.toLocaleString() || "0"}
+              </span>
+            )}
+          </div>
+
+          {/* Badges */}
+          <div className="flex gap-2 pt-2">
+            {formData.isOnSale && (
+              <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">
+                Sale
+              </span>
+            )}
+            {formData.isNikeByYou && (
+              <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                Nike By You
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>

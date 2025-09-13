@@ -73,8 +73,9 @@ export default function ProductUpdateForm() {
 
   const [newSubCategory, setNewSubCategory] = useState("");
   const [newGender, setNewGender] = useState("");
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>("");
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
 
   // Fetch product data
   useEffect(() => {
@@ -105,6 +106,27 @@ export default function ProductUpdateForm() {
           skuData: product.skuData || [],
           subCategories: product.subCategory || [],
         });
+
+        // Set existing images for preview
+        if (product.images && product.images.length > 0) {
+          const backendUrl =
+            process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+          const imageUrls = product.images.map((img: any) => {
+            if (img.imageUrl.startsWith("http")) {
+              return img.imageUrl;
+            }
+            return `${backendUrl}${img.imageUrl}`;
+          });
+          setExistingImages(imageUrls);
+        } else if (product.imageUrl) {
+          // Fallback to main image if no images array
+          const backendUrl =
+            process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+          const imageUrl = product.imageUrl.startsWith("http")
+            ? product.imageUrl
+            : `${backendUrl}${product.imageUrl}`;
+          setExistingImages([imageUrl]);
+        }
       } catch (error: any) {
         console.error("Error fetching product:", error);
         toast({
@@ -182,47 +204,64 @@ export default function ProductUpdateForm() {
   };
 
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Validate file type
-      const allowedTypes = [
-        "image/jpeg",
-        "image/jpg",
-        "image/png",
-        "image/gif",
-        "image/webp",
-      ];
-      if (!allowedTypes.includes(file.type)) {
-        toast({
-          title: "Error",
-          description:
-            "Hanya file gambar (JPEG, JPG, PNG, GIF, WEBP) yang diperbolehkan",
-          variant: "destructive",
-        });
-        return;
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      const newFiles: File[] = [];
+      const newPreviews: string[] = [];
+
+      // Validate each file
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+
+        // Validate file type
+        const allowedTypes = [
+          "image/jpeg",
+          "image/jpg",
+          "image/png",
+          "image/gif",
+          "image/webp",
+        ];
+        if (!allowedTypes.includes(file.type)) {
+          toast({
+            title: "Error",
+            description: `File ${file.name} bukan format gambar yang diperbolehkan (JPEG, JPG, PNG, GIF, WEBP)`,
+            variant: "destructive",
+          });
+          continue;
+        }
+
+        // Validate file size (3MB limit)
+        if (file.size > 3 * 1024 * 1024) {
+          toast({
+            title: "Error",
+            description: `File ${file.name} terlalu besar (maksimal 3MB)`,
+            variant: "destructive",
+          });
+          continue;
+        }
+
+        newFiles.push(file);
+        newPreviews.push(URL.createObjectURL(file));
       }
 
-      // Validate file size (3MB limit)
-      if (file.size > 3 * 1024 * 1024) {
-        toast({
-          title: "Error",
-          description: "Ukuran file tidak boleh lebih dari 3MB",
-          variant: "destructive",
-        });
-        return;
+      if (newFiles.length > 0) {
+        setSelectedImages(newFiles);
+        setImagePreviews(newPreviews);
       }
-
-      setSelectedImage(file);
-
-      // Create preview URL
-      const previewUrl = URL.createObjectURL(file);
-      setImagePreview(previewUrl);
     }
   };
 
-  const removeSelectedImage = () => {
-    setSelectedImage(null);
-    setImagePreview("");
+  const removeSelectedImage = (index: number) => {
+    const newImages = selectedImages.filter((_, i) => i !== index);
+    const newPreviews = imagePreviews.filter((_, i) => i !== index);
+
+    setSelectedImages(newImages);
+    setImagePreviews(newPreviews);
+  };
+
+  const clearAllImages = () => {
+    setSelectedImages([]);
+    setImagePreviews([]);
     // Clear the file input
     const fileInput = document.getElementById(
       "image-upload"
@@ -261,17 +300,19 @@ export default function ProductUpdateForm() {
 
       let data;
 
-      if (selectedImage) {
-        // Create FormData for image upload
-        const formDataWithImage = new FormData();
+      if (selectedImages.length > 0) {
+        // Create FormData for multiple images upload
+        const formDataWithImages = new FormData();
 
-        // Add image file
-        formDataWithImage.append("image", selectedImage);
+        // Add all image files
+        selectedImages.forEach((image) => {
+          formDataWithImages.append("images", image);
+        });
 
         // Add all form data as JSON string
-        formDataWithImage.append("data", JSON.stringify(formData));
+        formDataWithImages.append("data", JSON.stringify(formData));
 
-        data = await api.products.updateWithImage(id, formDataWithImage);
+        data = await api.products.updateWithImage(id, formDataWithImages);
       } else {
         // Use regular API call without image
         data = await api.products.update(id, formData);
@@ -613,7 +654,7 @@ export default function ProductUpdateForm() {
                         </div>
                       </div>
 
-                      {/* Image Upload */}
+                      {/* Multiple Images Upload */}
                       <div className="bg-white p-6 rounded-lg shadow">
                         <h2 className="text-lg font-semibold mb-4">
                           Update Gambar Produk
@@ -621,21 +662,72 @@ export default function ProductUpdateForm() {
                         <div className="space-y-4">
                           <div>
                             <label className="block text-sm font-medium mb-2">
-                              Pilih Gambar Baru (Opsional)
+                              Pilih Gambar Baru (Multiple, Opsional)
                             </label>
                             <input
                               id="image-upload"
                               type="file"
                               accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
                               onChange={handleImageSelect}
+                              multiple
                               className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
                             <p className="text-xs text-gray-500 mt-1">
                               Format yang didukung: JPEG, JPG, PNG, GIF, WEBP.
-                              Maksimal 3MB. Kosongkan jika tidak ingin mengubah
+                              Maksimal 3MB per file. Bisa upload multiple
+                              gambar. Kosongkan jika tidak ingin mengubah
                               gambar.
                             </p>
                           </div>
+
+                          {/* Image Previews */}
+                          {imagePreviews.length > 0 && (
+                            <div className="mt-4">
+                              <div className="flex items-center justify-between mb-3">
+                                <h3 className="text-sm font-medium text-gray-700">
+                                  Preview Gambar Baru ({imagePreviews.length})
+                                </h3>
+                                <Button
+                                  type="button"
+                                  onClick={clearAllImages}
+                                  variant="outline"
+                                  size="sm"
+                                >
+                                  Hapus Semua
+                                </Button>
+                              </div>
+                              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                                {imagePreviews.map((preview, index) => (
+                                  <div
+                                    key={index}
+                                    className="relative group border rounded-lg overflow-hidden"
+                                  >
+                                    <img
+                                      src={preview}
+                                      alt={`Preview ${index + 1}`}
+                                      className="w-full h-24 object-cover"
+                                    />
+                                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 flex items-center justify-center">
+                                      <Button
+                                        type="button"
+                                        onClick={() =>
+                                          removeSelectedImage(index)
+                                        }
+                                        variant="destructive"
+                                        size="sm"
+                                        className="opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                                      >
+                                        Hapus
+                                      </Button>
+                                    </div>
+                                    <div className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-2 py-1 rounded">
+                                      {index + 1}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -809,7 +901,7 @@ export default function ProductUpdateForm() {
                       <div className="flex justify-center">
                         <ProductPreviewCard
                           formData={formData}
-                          imagePreview={imagePreview}
+                          imagePreviews={[...existingImages, ...imagePreviews]}
                         />
                       </div>
 
@@ -819,11 +911,13 @@ export default function ProductUpdateForm() {
                           Preview Info:
                         </h3>
                         <div className="text-xs text-gray-600 space-y-1">
+                          <div>• Gambar existing ditampilkan di preview</div>
                           <div>
-                            • Gambar akan ditampilkan di preview saat dipilih
+                            • Gambar baru akan ditampilkan setelah dipilih
                           </div>
                           <div>
-                            • Upload gambar baru akan mengganti gambar lama
+                            • Upload gambar baru akan ditambahkan ke gambar
+                            existing
                           </div>
                           <div>
                             • Preview ini menunjukkan tampilan di halaman produk
