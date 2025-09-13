@@ -93,6 +93,28 @@ const ProductDetailPage: React.FC = () => {
     });
   };
 
+  // Helper function to get the correct image URL
+  const getImageUrl = () => {
+    if (!product.imageUrl) {
+      return "/placeholder-image.svg"; // Fallback image
+    }
+
+    // If it's already a full URL, return as is
+    if (product.imageUrl.startsWith("http")) {
+      return product.imageUrl;
+    }
+
+    // If it's a local asset path, prepend the backend URL
+    if (product.imageUrl.startsWith("/assets/")) {
+      const backendUrl =
+        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+      return `${backendUrl}${product.imageUrl}`;
+    }
+
+    // Default fallback
+    return product.imageUrl;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -157,29 +179,16 @@ const ProductDetailPage: React.FC = () => {
           {/* Product Image */}
           <div className="space-y-4">
             <div className="aspect-square overflow-hidden rounded-lg bg-white shadow-lg">
-              {product.imageUrl ? (
-                <img
-                  src={product.imageUrl}
-                  alt={product.name}
-                  className="h-full w-full object-cover object-center"
-                />
-              ) : (
-                <div className="h-full w-full flex items-center justify-center bg-gray-200">
-                  <svg
-                    className="h-24 w-24 text-gray-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    />
-                  </svg>
-                </div>
-              )}
+              <img
+                src={getImageUrl()}
+                alt={product.name}
+                className="h-full w-full object-cover object-center"
+                onError={(e) => {
+                  // Fallback to placeholder if image fails to load
+                  const target = e.target as HTMLImageElement;
+                  target.src = "/placeholder-image.svg";
+                }}
+              />
             </div>
           </div>
 

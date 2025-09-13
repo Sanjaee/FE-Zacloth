@@ -70,9 +70,9 @@ export const useProduct = (
       setError(null);
 
       try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/products/${id}`
-        );
+        const backendUrl =
+          process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+        const response = await fetch(`${backendUrl}/products/${id}`);
 
         if (!response.ok) {
           if (response.status === 404) {
@@ -85,6 +85,9 @@ export const useProduct = (
 
         const data = await response.json();
         const productData = data.product;
+
+        console.log("Product data received:", productData);
+        console.log("Product imageUrl:", productData?.imageUrl);
 
         // Cache the result
         productCache.set(id, { data: productData, timestamp: Date.now() });
