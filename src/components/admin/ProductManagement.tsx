@@ -74,6 +74,7 @@ export function ProductManagement() {
   const [newGender, setNewGender] = useState("");
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [imageOrder, setImageOrder] = useState<number[]>([]);
 
   const handleInputChange = (field: keyof ProductFormData, value: any) => {
     setFormData((prev) => ({
@@ -177,6 +178,13 @@ export function ProductManagement() {
       if (newFiles.length > 0) {
         setSelectedImages(newFiles);
         setImagePreviews(newPreviews);
+        // Initialize order array starting from current length
+        const currentLength = selectedImages.length;
+        const newOrder = Array.from(
+          { length: newFiles.length },
+          (_, i) => currentLength + i
+        );
+        setImageOrder((prev) => [...prev, ...newOrder]);
       }
     }
   };
@@ -184,20 +192,75 @@ export function ProductManagement() {
   const removeSelectedImage = (index: number) => {
     const newImages = selectedImages.filter((_, i) => i !== index);
     const newPreviews = imagePreviews.filter((_, i) => i !== index);
+    const newOrder = imageOrder.filter((_, i) => i !== index);
 
     setSelectedImages(newImages);
     setImagePreviews(newPreviews);
+    setImageOrder(newOrder);
   };
 
   const clearAllImages = () => {
     setSelectedImages([]);
     setImagePreviews([]);
+    setImageOrder([]);
     // Clear the file input
     const fileInput = document.getElementById(
       "image-upload"
     ) as HTMLInputElement;
     if (fileInput) {
       fileInput.value = "";
+    }
+  };
+
+  const moveImageUp = (index: number) => {
+    if (index > 0) {
+      const newImages = [...selectedImages];
+      const newPreviews = [...imagePreviews];
+      const newOrder = [...imageOrder];
+
+      // Swap with previous item
+      [newImages[index], newImages[index - 1]] = [
+        newImages[index - 1],
+        newImages[index],
+      ];
+      [newPreviews[index], newPreviews[index - 1]] = [
+        newPreviews[index - 1],
+        newPreviews[index],
+      ];
+      [newOrder[index], newOrder[index - 1]] = [
+        newOrder[index - 1],
+        newOrder[index],
+      ];
+
+      setSelectedImages(newImages);
+      setImagePreviews(newPreviews);
+      setImageOrder(newOrder);
+    }
+  };
+
+  const moveImageDown = (index: number) => {
+    if (index < selectedImages.length - 1) {
+      const newImages = [...selectedImages];
+      const newPreviews = [...imagePreviews];
+      const newOrder = [...imageOrder];
+
+      // Swap with next item
+      [newImages[index], newImages[index + 1]] = [
+        newImages[index + 1],
+        newImages[index],
+      ];
+      [newPreviews[index], newPreviews[index + 1]] = [
+        newPreviews[index + 1],
+        newPreviews[index],
+      ];
+      [newOrder[index], newOrder[index + 1]] = [
+        newOrder[index + 1],
+        newOrder[index],
+      ];
+
+      setSelectedImages(newImages);
+      setImagePreviews(newPreviews);
+      setImageOrder(newOrder);
     }
   };
 
@@ -272,6 +335,7 @@ export function ProductManagement() {
       // Reset images
       setSelectedImages([]);
       setImagePreviews([]);
+      setImageOrder([]);
       const fileInput = document.getElementById(
         "image-upload"
       ) as HTMLInputElement;
@@ -647,33 +711,75 @@ export function ProductManagement() {
                                   Hapus Semua
                                 </Button>
                               </div>
-                              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                              <div className="space-y-3">
                                 {imagePreviews.map((preview, index) => (
                                   <div
                                     key={index}
-                                    className="relative group border rounded-lg overflow-hidden"
+                                    className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50"
                                   >
-                                    <img
-                                      src={preview}
-                                      alt={`Preview ${index + 1}`}
-                                      className="w-full h-24 object-cover"
-                                    />
-                                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 flex items-center justify-center">
+                                    {/* Order Controls */}
+                                    <div className="flex flex-col gap-1">
                                       <Button
                                         type="button"
-                                        onClick={() =>
-                                          removeSelectedImage(index)
-                                        }
-                                        variant="destructive"
+                                        onClick={() => moveImageUp(index)}
+                                        variant="outline"
                                         size="sm"
-                                        className="opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                                        disabled={index === 0}
+                                        className="h-6 w-6 p-0"
                                       >
-                                        Hapus
+                                        ↑
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        onClick={() => moveImageDown(index)}
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={
+                                          index === imagePreviews.length - 1
+                                        }
+                                        className="h-6 w-6 p-0"
+                                      >
+                                        ↓
                                       </Button>
                                     </div>
-                                    <div className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-2 py-1 rounded">
-                                      {index + 1}
+
+                                    {/* Image Preview */}
+                                    <div className="relative flex-shrink-0">
+                                      <img
+                                        src={preview}
+                                        alt={`Preview ${index + 1}`}
+                                        className="w-16 h-16 object-cover rounded border"
+                                      />
+                                      <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                                        {index + 1}
+                                      </div>
                                     </div>
+
+                                    {/* Image Info */}
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-gray-900 truncate">
+                                        {selectedImages[index]?.name ||
+                                          `Image ${index + 1}`}
+                                      </p>
+                                      <p className="text-xs text-gray-500">
+                                        {(
+                                          selectedImages[index]?.size /
+                                          1024 /
+                                          1024
+                                        ).toFixed(2)}{" "}
+                                        MB
+                                      </p>
+                                    </div>
+
+                                    {/* Remove Button */}
+                                    <Button
+                                      type="button"
+                                      onClick={() => removeSelectedImage(index)}
+                                      variant="destructive"
+                                      size="sm"
+                                    >
+                                      Hapus
+                                    </Button>
                                   </div>
                                 ))}
                               </div>
@@ -868,6 +974,9 @@ export function ProductManagement() {
                           </div>
                           <div>
                             • Bisa upload multiple gambar (maksimal 10 gambar)
+                          </div>
+                          <div>
+                            • Gunakan tombol ↑↓ untuk mengatur urutan gambar
                           </div>
                           <div>
                             • Gambar akan ditampilkan di preview saat dipilih
