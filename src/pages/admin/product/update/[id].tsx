@@ -14,6 +14,13 @@ import {
 import { ProductPreviewCard } from "../../../../components/admin/ProductPreviewCard";
 import { generateSlug } from "../../../../utils/slugGenerator";
 import {
+  formatRupiah,
+  parseRupiah,
+  handleCurrencyInputChange,
+  getCurrencyDisplayValue,
+  formatInputValue,
+} from "../../../../utils/currencyFormatter";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -105,6 +112,8 @@ export default function ProductUpdateForm() {
     index: number;
     data: any;
   } | null>(null);
+  const [currentPriceDisplay, setCurrentPriceDisplay] = useState("");
+  const [fullPriceDisplay, setFullPriceDisplay] = useState("");
 
   // Fetch product data
   useEffect(() => {
@@ -136,6 +145,12 @@ export default function ProductUpdateForm() {
           skuData: product.skuData || [],
           subCategories: product.subCategory || [],
         });
+
+        // Set display values for currency inputs
+        setCurrentPriceDisplay(
+          getCurrencyDisplayValue(product.currentPrice || 0)
+        );
+        setFullPriceDisplay(getCurrencyDisplayValue(product.fullPrice || 0));
 
         // Set existing images for preview and management
         if (product.images && product.images.length > 0) {
@@ -474,6 +489,27 @@ export default function ProductUpdateForm() {
     setImageToDelete(null);
   };
 
+  const handleCurrentPriceChange = (value: string) => {
+    const formattedValue = formatInputValue(value);
+    setCurrentPriceDisplay(formattedValue);
+    handleCurrencyInputChange(value, (numValue) => {
+      handleInputChange("currentPrice", numValue);
+    });
+  };
+
+  const handleFullPriceChange = (value: string) => {
+    const formattedValue = formatInputValue(value);
+    setFullPriceDisplay(formattedValue);
+    handleCurrencyInputChange(value, (numValue) => {
+      handleInputChange("fullPrice", numValue);
+    });
+  };
+
+  const handlePriceWheel = (e: React.WheelEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.currentTarget.blur();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -805,35 +841,43 @@ export default function ProductUpdateForm() {
                               <label className="block text-sm font-medium mb-2">
                                 Harga Saat Ini *
                               </label>
-                              <input
-                                type="number"
-                                value={formData.currentPrice}
-                                onChange={(e) =>
-                                  handleInputChange(
-                                    "currentPrice",
-                                    parseInt(e.target.value) || 0
-                                  )
-                                }
-                                className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                required
-                              />
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
+                                  Rp
+                                </span>
+                                <input
+                                  type="text"
+                                  value={currentPriceDisplay}
+                                  onChange={(e) =>
+                                    handleCurrentPriceChange(e.target.value)
+                                  }
+                                  onWheel={handlePriceWheel}
+                                  placeholder="Masukkan harga"
+                                  className="w-full pl-10 pr-3 py-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                  required
+                                />
+                              </div>
                             </div>
                             <div>
                               <label className="block text-sm font-medium mb-2">
                                 Harga Penuh *
                               </label>
-                              <input
-                                type="number"
-                                value={formData.fullPrice}
-                                onChange={(e) =>
-                                  handleInputChange(
-                                    "fullPrice",
-                                    parseInt(e.target.value) || 0
-                                  )
-                                }
-                                className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                required
-                              />
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
+                                  Rp
+                                </span>
+                                <input
+                                  type="text"
+                                  value={fullPriceDisplay}
+                                  onChange={(e) =>
+                                    handleFullPriceChange(e.target.value)
+                                  }
+                                  onWheel={handlePriceWheel}
+                                  placeholder="Masukkan harga"
+                                  className="w-full pl-10 pr-3 py-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                  required
+                                />
+                              </div>
                             </div>
                           </div>
                           <div className="grid grid-cols-2 gap-4">

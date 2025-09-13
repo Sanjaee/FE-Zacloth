@@ -14,6 +14,13 @@ import { useToast } from "../../hooks/use-toast";
 import { AppSidebar } from "./app-sidebar";
 import { SiteHeader } from "./site-header";
 import { generateSlug } from "../../utils/slugGenerator";
+import {
+  formatRupiah,
+  parseRupiah,
+  handleCurrencyInputChange,
+  getCurrencyDisplayValue,
+  formatInputValue,
+} from "../../utils/currencyFormatter";
 import { SidebarInset, SidebarProvider } from "../ui/sidebar";
 import { ProductPreviewCard } from "./ProductPreviewCard";
 
@@ -78,6 +85,8 @@ export function ProductManagement() {
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [imageOrder, setImageOrder] = useState<number[]>([]);
+  const [currentPriceDisplay, setCurrentPriceDisplay] = useState("");
+  const [fullPriceDisplay, setFullPriceDisplay] = useState("");
 
   const handleInputChange = (field: keyof ProductFormData, value: any) => {
     setFormData((prev) => {
@@ -276,6 +285,27 @@ export function ProductManagement() {
     }
   };
 
+  const handleCurrentPriceChange = (value: string) => {
+    const formattedValue = formatInputValue(value);
+    setCurrentPriceDisplay(formattedValue);
+    handleCurrencyInputChange(value, (numValue) => {
+      handleInputChange("currentPrice", numValue);
+    });
+  };
+
+  const handleFullPriceChange = (value: string) => {
+    const formattedValue = formatInputValue(value);
+    setFullPriceDisplay(formattedValue);
+    handleCurrencyInputChange(value, (numValue) => {
+      handleInputChange("fullPrice", numValue);
+    });
+  };
+
+  const handlePriceWheel = (e: React.WheelEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.currentTarget.blur();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -392,6 +422,10 @@ export function ProductManagement() {
       if (fileInput) {
         fileInput.value = "";
       }
+
+      // Reset price display values
+      setCurrentPriceDisplay("");
+      setFullPriceDisplay("");
     } catch (error: any) {
       console.error("Product creation error:", error);
       toast({
@@ -645,35 +679,43 @@ export function ProductManagement() {
                               <label className="block text-sm font-medium mb-2">
                                 Harga Saat Ini *
                               </label>
-                              <input
-                                type="number"
-                                value={formData.currentPrice}
-                                onChange={(e) =>
-                                  handleInputChange(
-                                    "currentPrice",
-                                    parseInt(e.target.value) || 0
-                                  )
-                                }
-                                className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                required
-                              />
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
+                                  Rp
+                                </span>
+                                <input
+                                  type="text"
+                                  value={currentPriceDisplay}
+                                  onChange={(e) =>
+                                    handleCurrentPriceChange(e.target.value)
+                                  }
+                                  onWheel={handlePriceWheel}
+                                  placeholder="Masukkan harga"
+                                  className="w-full pl-10 pr-3 py-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                  required
+                                />
+                              </div>
                             </div>
                             <div>
                               <label className="block text-sm font-medium mb-2">
                                 Harga Penuh *
                               </label>
-                              <input
-                                type="number"
-                                value={formData.fullPrice}
-                                onChange={(e) =>
-                                  handleInputChange(
-                                    "fullPrice",
-                                    parseInt(e.target.value) || 0
-                                  )
-                                }
-                                className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                required
-                              />
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
+                                  Rp
+                                </span>
+                                <input
+                                  type="text"
+                                  value={fullPriceDisplay}
+                                  onChange={(e) =>
+                                    handleFullPriceChange(e.target.value)
+                                  }
+                                  onWheel={handlePriceWheel}
+                                  placeholder="Masukkan harga"
+                                  className="w-full pl-10 pr-3 py-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                  required
+                                />
+                              </div>
                             </div>
                           </div>
                           <div className="grid grid-cols-2 gap-4">
