@@ -29,11 +29,13 @@ interface ProductFormData {
 interface ProductPreviewCardProps {
   formData: ProductFormData;
   imagePreviews?: string[];
+  imageHeight?: string;
 }
 
 export function ProductPreviewCard({
   formData,
   imagePreviews = [],
+  imageHeight = "256px",
 }: ProductPreviewCardProps) {
   // Convert image previews to the format expected by ImageSlider
   const images = (imagePreviews || []).map((preview, index) => ({
@@ -89,18 +91,19 @@ export function ProductPreviewCard({
   return (
     <div className="w-full max-w-sm bg-white rounded-lg shadow-md overflow-hidden">
       {/* Image Slider */}
-      <div className="h-64">
+      <div style={{ height: imageHeight }}>
         <ImageSlider
           images={images}
           className="h-full"
           showThumbnails={false}
           showFullscreen={true}
           autoPlay={false}
+          height={imageHeight}
         />
       </div>
 
       {/* Product Info */}
-      <div className="p-4">
+      <div className="p-4 mt-2">
         <h3 className="font-semibold text-lg text-gray-800 mb-2">
           {formData.name || "Nama Produk"}
         </h3>

@@ -16,6 +16,7 @@ interface ImageSliderProps {
   showFullscreen?: boolean;
   autoPlay?: boolean;
   autoPlayInterval?: number;
+  height?: string;
 }
 
 export function ImageSlider({
@@ -25,6 +26,7 @@ export function ImageSlider({
   showFullscreen = true,
   autoPlay = false,
   autoPlayInterval = 3000,
+  height = "500px",
 }: ImageSliderProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -106,7 +108,8 @@ export function ImageSlider({
           <img
             src={currentImage.imageUrl}
             alt={currentImage.altText || `Product image ${currentIndex + 1}`}
-            className="w-full h-[500px] object-cover rounded-lg cursor-pointer"
+            className="w-full object-cover rounded-lg cursor-pointer"
+            style={{ height }}
             onClick={showFullscreen ? openFullscreen : undefined}
           />
 

@@ -38,6 +38,12 @@ interface ProductFormData {
   genders: string[];
   skuData: SkuData[];
   subCategories: string[];
+  existingImages?: Array<{
+    id: string;
+    imageUrl: string;
+    altText: string;
+    order: number;
+  }>;
 }
 
 export default function ProductUpdateForm() {
@@ -81,6 +87,8 @@ export default function ProductUpdateForm() {
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [existingImageData, setExistingImageData] = useState<any[]>([]);
   const [imageOrder, setImageOrder] = useState<number[]>([]);
+  const [selectedMainImageIndex, setSelectedMainImageIndex] =
+    useState<number>(0);
 
   // Fetch product data
   useEffect(() => {
@@ -405,6 +413,17 @@ export default function ProductUpdateForm() {
 
     setExistingImages(newExistingImages);
     setExistingImageData(newExistingImageData);
+
+    // Adjust selected main image index if needed
+    if (selectedMainImageIndex >= newExistingImages.length) {
+      setSelectedMainImageIndex(Math.max(0, newExistingImages.length - 1));
+    } else if (selectedMainImageIndex > index) {
+      setSelectedMainImageIndex(selectedMainImageIndex - 1);
+    }
+  };
+
+  const selectMainImage = (index: number) => {
+    setSelectedMainImageIndex(index);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -436,6 +455,24 @@ export default function ProductUpdateForm() {
 
       let data;
 
+      // Prepare form data with existing image order information
+      const formDataWithImageOrder = {
+        ...formData,
+        existingImages: existingImageData.map((img, index) => ({
+          id: img.id,
+          imageUrl: img.imageUrl,
+          altText: img.altText,
+          order: index, // Use current order from the UI
+        })),
+        // Set main image URL based on selected main image
+        imageUrl:
+          existingImages.length > 0 &&
+          selectedMainImageIndex < existingImages.length
+            ? existingImageData[selectedMainImageIndex]?.imageUrl ||
+              formData.imageUrl
+            : formData.imageUrl,
+      };
+
       if (selectedImages.length > 0) {
         // Create FormData for multiple images upload
         const formDataWithImages = new FormData();
@@ -445,13 +482,16 @@ export default function ProductUpdateForm() {
           formDataWithImages.append("images", image);
         });
 
-        // Add all form data as JSON string
-        formDataWithImages.append("data", JSON.stringify(formData));
+        // Add all form data as JSON string with existing image order
+        formDataWithImages.append(
+          "data",
+          JSON.stringify(formDataWithImageOrder)
+        );
 
         data = await api.products.updateWithImage(id, formDataWithImages);
       } else {
-        // Use regular API call without image
-        data = await api.products.update(id, formData);
+        // Use regular API call without image but with existing image order
+        data = await api.products.update(id, formDataWithImageOrder);
       }
 
       toast({
@@ -818,9 +858,15 @@ export default function ProductUpdateForm() {
                           {/* Existing Images */}
                           {existingImages.length > 0 && (
                             <div>
-                              <h3 className="text-sm font-medium text-gray-700 mb-3">
-                                Gambar Existing ({existingImages.length})
-                              </h3>
+                              <div className="flex items-center justify-between mb-3">
+                                <h3 className="text-sm font-medium text-gray-700">
+                                  Gambar Existing ({existingImages.length})
+                                </h3>
+                                <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                                  Klik gambar untuk pilih sebagai thumbnail
+                                  utama
+                                </div>
+                              </div>
                               <div className="space-y-3">
                                 {existingImages.map((imageUrl, index) => (
                                   <div
@@ -865,11 +911,21 @@ export default function ProductUpdateForm() {
                                           existingImageData[index]?.altText ||
                                           `Existing Image ${index + 1}`
                                         }
-                                        className="w-16 h-16 object-cover rounded border"
+                                        className={`w-16 h-16 object-cover rounded border cursor-pointer transition-all ${
+                                          selectedMainImageIndex === index
+                                            ? "ring-2 ring-blue-500 ring-offset-2"
+                                            : "hover:ring-2 hover:ring-blue-300"
+                                        }`}
+                                        onClick={() => selectMainImage(index)}
                                       />
                                       <div className="absolute -top-1 -right-1 bg-green-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
                                         {index + 1}
                                       </div>
+                                      {selectedMainImageIndex === index && (
+                                        <div className="absolute -bottom-1 -right-1 bg-blue-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                                          ★
+                                        </div>
+                                      )}
                                     </div>
 
                                     {/* Image Info */}
@@ -879,19 +935,40 @@ export default function ProductUpdateForm() {
                                           `Existing Image ${index + 1}`}
                                       </p>
                                       <p className="text-xs text-gray-500">
-                                        Existing Image
+                                        {selectedMainImageIndex === index ? (
+                                          <span className="text-blue-600 font-medium">
+                                            ★ Thumbnail Utama
+                                          </span>
+                                        ) : (
+                                          "Existing Image"
+                                        )}
                                       </p>
                                     </div>
 
-                                    {/* Remove Button */}
-                                    <Button
-                                      type="button"
-                                      onClick={() => removeExistingImage(index)}
-                                      variant="destructive"
-                                      size="sm"
-                                    >
-                                      Hapus
-                                    </Button>
+                                    {/* Action Buttons */}
+                                    <div className="flex gap-2">
+                                      {selectedMainImageIndex !== index && (
+                                        <Button
+                                          type="button"
+                                          onClick={() => selectMainImage(index)}
+                                          variant="outline"
+                                          size="sm"
+                                          className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                                        >
+                                          Pilih Thumbnail
+                                        </Button>
+                                      )}
+                                      <Button
+                                        type="button"
+                                        onClick={() =>
+                                          removeExistingImage(index)
+                                        }
+                                        variant="destructive"
+                                        size="sm"
+                                      >
+                                        Hapus
+                                      </Button>
+                                    </div>
                                   </div>
                                 ))}
                               </div>
@@ -1181,8 +1258,18 @@ export default function ProductUpdateForm() {
                       </h2>
                       <div className="flex justify-center">
                         <ProductPreviewCard
-                          formData={formData}
+                          formData={{
+                            ...formData,
+                            // Update imageUrl to show selected main image
+                            imageUrl:
+                              existingImages.length > 0 &&
+                              selectedMainImageIndex < existingImages.length
+                                ? existingImageData[selectedMainImageIndex]
+                                    ?.imageUrl || formData.imageUrl
+                                : formData.imageUrl,
+                          }}
                           imagePreviews={[...existingImages, ...imagePreviews]}
+                          imageHeight="200px"
                         />
                       </div>
 
@@ -1191,6 +1278,19 @@ export default function ProductUpdateForm() {
                         <h3 className="text-sm font-medium text-gray-700 mb-2">
                           Preview Info:
                         </h3>
+                        {existingImages.length > 0 && (
+                          <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                            <div className="text-blue-800 font-medium">
+                              Thumbnail Utama: Gambar{" "}
+                              {selectedMainImageIndex + 1}
+                            </div>
+                            <div className="text-blue-600">
+                              {existingImageData[selectedMainImageIndex]
+                                ?.altText ||
+                                `Existing Image ${selectedMainImageIndex + 1}`}
+                            </div>
+                          </div>
+                        )}
                         <div className="text-xs text-gray-600 space-y-1">
                           <div>
                             • Gambar existing ditampilkan dengan badge hijau
@@ -1198,6 +1298,13 @@ export default function ProductUpdateForm() {
                           <div>• Gambar baru ditampilkan dengan badge biru</div>
                           <div>
                             • Gunakan tombol ↑↓ untuk mengatur urutan gambar
+                          </div>
+                          <div>
+                            • Klik gambar atau tombol "Pilih Thumbnail" untuk
+                            set sebagai thumbnail utama
+                          </div>
+                          <div>
+                            • Gambar dengan bintang (★) adalah thumbnail utama
                           </div>
                           <div>
                             • Bisa hapus gambar existing atau tambah gambar baru
