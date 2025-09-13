@@ -305,8 +305,45 @@ export function ProductManagement() {
           formDataWithImages.append("images", image);
         });
 
+        // Validate and clean form data before sending
+        const cleanedFormData = {
+          ...formData,
+          catalogId: formData.catalogId.trim(),
+          brand: formData.brand.trim(),
+          category: formData.category.trim(),
+          name: formData.name.trim(),
+          slug: formData.slug.trim(),
+          cloudProductId: formData.cloudProductId.trim(),
+          color: formData.color.trim(),
+          country: formData.country.trim(),
+          prodigyId: formData.prodigyId.trim(),
+          imageUrl: formData.imageUrl.trim(),
+          // Ensure prices are valid numbers
+          currentPrice: Math.max(0, formData.currentPrice),
+          fullPrice: Math.max(0, formData.fullPrice),
+        };
+
+        // Validate required fields
+        if (
+          !cleanedFormData.catalogId ||
+          !cleanedFormData.brand ||
+          !cleanedFormData.category ||
+          !cleanedFormData.name
+        ) {
+          toast({
+            title: "Error",
+            description:
+              "Please fill in all required fields (Catalog ID, Brand, Category, Name)",
+            variant: "destructive",
+          });
+          return;
+        }
+
         // Add all form data as JSON string
-        formDataWithImages.append("data", JSON.stringify(formData));
+        console.log("Form data being sent:", cleanedFormData);
+        const jsonData = JSON.stringify(cleanedFormData);
+        console.log("JSON string:", jsonData);
+        formDataWithImages.append("data", jsonData);
 
         data = await api.products.createWithImage(formDataWithImages);
       } else {

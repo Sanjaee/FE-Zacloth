@@ -38,7 +38,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { api } from "@/lib/api";
+import { api } from "@/lib/api-client";
 import { useCounterAnimation } from "@/hooks/useCounterAnimation";
 
 // User schema

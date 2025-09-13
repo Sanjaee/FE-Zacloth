@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { api } from "@/lib/api";
+import { api } from "@/lib/api-client";
 import { useCounterAnimation } from "@/hooks/useCounterAnimation";
 import { usePercentageAnimation } from "@/hooks/usePercentageAnimation";
 import { useFadeInAnimation } from "@/hooks/useFadeInAnimation";
