@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "./button";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
@@ -31,6 +31,20 @@ export function ImageSlider({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [thumbnailScrollPosition, setThumbnailScrollPosition] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  // Detect mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   // Auto play functionality
   React.useEffect(() => {
@@ -44,15 +58,16 @@ export function ImageSlider({
 
   // Auto-scroll thumbnails when main image changes
   React.useEffect(() => {
-    if (images.length > 6) {
-      const thumbnailsPerView = 6;
+    const thumbnailsPerView = isMobile ? 4 : 6;
+
+    if (images.length > thumbnailsPerView) {
       const maxScroll = Math.max(0, images.length - thumbnailsPerView);
 
       // Calculate the optimal scroll position to keep current image visible
       const optimalScroll = Math.max(0, Math.min(maxScroll, currentIndex - 2));
       setThumbnailScrollPosition(optimalScroll);
     }
-  }, [currentIndex, images.length]);
+  }, [currentIndex, images.length, isMobile]);
 
   const goToPrevious = () => {
     setCurrentIndex((prevIndex) =>
@@ -81,8 +96,62 @@ export function ImageSlider({
   };
 
   const scrollThumbnailsRight = () => {
-    const maxScroll = Math.max(0, images.length - 6); // Show 6 thumbnails at once
+    const thumbnailsPerView = isMobile ? 4 : 6;
+    const maxScroll = Math.max(0, images.length - thumbnailsPerView);
     setThumbnailScrollPosition((prev) => Math.min(maxScroll, prev + 1));
+  };
+
+  // Touch/Drag handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+
+    if (isLeftSwipe) {
+      goToNext();
+    } else if (isRightSwipe) {
+      goToPrevious();
+    }
+  };
+
+  // Mouse drag handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.clientX);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (touchStart !== null) {
+      setTouchEnd(e.clientX);
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (!touchStart || !touchEnd) return;
+
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+
+    if (isLeftSwipe) {
+      goToNext();
+    } else if (isRightSwipe) {
+      goToPrevious();
+    }
+
+    setTouchStart(null);
+    setTouchEnd(null);
   };
 
   // Handle keyboard navigation
@@ -130,9 +199,19 @@ export function ImageSlider({
           <img
             src={currentImage.imageUrl}
             alt={currentImage.altText || `Product image ${currentIndex + 1}`}
-            className="w-full h-full object-cover rounded-lg cursor-pointer"
+            className="w-full h-full object-cover rounded-lg cursor-pointer select-none"
             style={{ height }}
             onClick={showFullscreen ? openFullscreen : undefined}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={() => {
+              setTouchStart(null);
+              setTouchEnd(null);
+            }}
           />
 
           {/* Navigation Arrows */}
@@ -177,21 +256,21 @@ export function ImageSlider({
           )}
         </div>
 
-        {/* Thumbnails */}
-        {showThumbnails && images.length > 1 && (
-          <div className="relative m-3">
+        {/* Thumbnails - Desktop Only */}
+        {showThumbnails && images.length > 1 && !isMobile && (
+          <div className="relative mt-3 px-2 sm:px-3">
             {/* Thumbnail Navigation Arrows */}
-            {images.length > 6 && (
+            {images.length > 4 && (
               <>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={scrollThumbnailsLeft}
                   disabled={thumbnailScrollPosition === 0}
-                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white shadow-lg border-gray-200 hover:bg-gray-50 disabled:opacity-50 h-8 w-8 p-0"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-white shadow-lg border-gray-200 hover:bg-gray-50 disabled:opacity-50 h-6 w-6 p-0 sm:h-8 sm:w-8"
                 >
                   <svg
-                    className="w-3 h-3"
+                    className="w-2 h-2 sm:w-3 sm:h-3"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -209,12 +288,13 @@ export function ImageSlider({
                   size="sm"
                   onClick={scrollThumbnailsRight}
                   disabled={
-                    thumbnailScrollPosition >= Math.max(0, images.length - 6)
+                    thumbnailScrollPosition >=
+                    Math.max(0, images.length - (isMobile ? 4 : 6))
                   }
-                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white shadow-lg border-gray-200 hover:bg-gray-50 disabled:opacity-50 h-8 w-8 p-0"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-white shadow-lg border-gray-200 hover:bg-gray-50 disabled:opacity-50 h-6 w-6 p-0 sm:h-8 sm:w-8"
                 >
                   <svg
-                    className="w-3 h-3"
+                    className="w-2 h-2 sm:w-3 sm:h-3"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -231,18 +311,20 @@ export function ImageSlider({
             )}
 
             {/* Thumbnail Container */}
-            <div className="overflow-hidden mx-10">
+            <div className="overflow-hidden mx-6 sm:mx-10">
               <div
-                className="flex gap-2 transition-transform duration-300 ease-in-out"
+                className="flex gap-1 sm:gap-2 transition-transform duration-300 ease-in-out"
                 style={{
-                  transform: `translateX(-${thumbnailScrollPosition * 72}px)`, // 64px (w-16) + 8px (gap-2)
+                  transform: `translateX(-${
+                    thumbnailScrollPosition * (isMobile ? 60 : 72)
+                  }px)`, // 56px (w-14) + 4px (gap-1) for mobile, 64px (w-16) + 8px (gap-2) for desktop
                 }}
               >
                 {images.map((image, index) => (
                   <button
                     key={image.id}
                     onClick={() => goToSlide(index)}
-                    className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
+                    className={`flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
                       index === currentIndex
                         ? "border-blue-500 ring-2 ring-blue-200"
                         : "border-gray-200 hover:border-gray-300"
@@ -293,15 +375,54 @@ export function ImageSlider({
             </Button>
 
             {/* Fullscreen Image */}
-            <div className="relative animate-in zoom-in-95 duration-300 w-full h-full flex items-center justify-center">
+            <div
+              className="relative animate-in zoom-in-95 duration-300 w-full h-full flex items-center justify-center"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={() => {
+                setTouchStart(null);
+                setTouchEnd(null);
+              }}
+            >
               <img
                 src={currentImage.imageUrl}
                 alt={
                   currentImage.altText || `Product image ${currentIndex + 1}`
                 }
-                className="max-w-[600px] max-h-[600px] object-cover rounded-lg shadow-2xl"
+                className="max-w-[600px] max-h-[600px] object-cover rounded-lg shadow-2xl select-none"
               />
             </div>
+
+            {/* Mobile Thumbnails in Fullscreen */}
+            {isMobile && showThumbnails && images.length > 1 && (
+              <div className="absolute bottom-18 left-0 right-0 px-4">
+                <div className="bg-black/50 backdrop-blur-sm rounded-lg p-2">
+                  <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                    {images.map((image, index) => (
+                      <button
+                        key={image.id}
+                        onClick={() => goToSlide(index)}
+                        className={`flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
+                          index === currentIndex
+                            ? "border-blue-400 ring-2 ring-blue-200"
+                            : "border-white/30 hover:border-white/60"
+                        }`}
+                      >
+                        <img
+                          src={image.imageUrl}
+                          alt={image.altText || `Thumbnail ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Navigation Arrows */}
             {images.length > 1 && (
