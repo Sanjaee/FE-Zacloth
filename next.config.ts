@@ -5,8 +5,8 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: "standalone",
   images: {
-    domains: ["static.nike.com"],
-  },  
+    domains: ["static.nike.com", "localhost", "api.zascript.com"],
+  },
 };
 
 export default nextConfig;

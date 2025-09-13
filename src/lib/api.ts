@@ -9,11 +9,12 @@ export class ApiClient {
       process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
   }
 
-  private async getAuthHeaders(): Promise<HeadersInit> {
+  private async getAuthHeaders(
+    includeContentType: boolean = true
+  ): Promise<HeadersInit> {
     const session = await getSession();
 
     const headers: HeadersInit = {
-      "Content-Type": "application/json",
       "User-Agent":
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
       Accept: "application/json, text/plain, */*",
@@ -27,6 +28,10 @@ export class ApiClient {
         process.env.NEXTAUTH_URL || "http://localhost:3000"
       }/admin/product`,
     };
+
+    if (includeContentType) {
+      headers["Content-Type"] = "application/json";
+    }
 
     if (session?.accessToken) {
       headers.Authorization = `Bearer ${session.accessToken}`;
@@ -59,6 +64,23 @@ export class ApiClient {
       headers,
       credentials: "include",
       body: data ? JSON.stringify(data) : undefined,
+    });
+
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  async postFormData<T>(endpoint: string, formData: FormData): Promise<T> {
+    const headers = await this.getAuthHeaders(false); // Don't include Content-Type for FormData
+
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      method: "POST",
+      headers,
+      credentials: "include",
+      body: formData,
     });
 
     if (!response.ok) {
@@ -134,6 +156,18 @@ export const api = {
     },
     getById: (id: string) => apiClient.get(`/products/${id}`),
     create: (productData: any) => apiClient.post("/products", productData),
+    createWithImage: (formData: FormData) =>
+      apiClient.postFormData("/products/with-image", formData),
+  },
+
+  // Image endpoints
+  images: {
+    upload: (formData: FormData) =>
+      apiClient.postFormData("/images/upload", formData),
+    uploadMultiple: (formData: FormData) =>
+      apiClient.postFormData("/images/upload-multiple", formData),
+    delete: (filename: string) => apiClient.delete(`/images/${filename}`),
+    getInfo: (filename: string) => apiClient.get(`/images/info/${filename}`),
   },
 
   // QR endpoints
