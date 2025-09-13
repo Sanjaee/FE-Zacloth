@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import {
   IconCamera,
-  IconChartBar,
+  IconEdit,
   IconDashboard,
   IconDatabase,
   IconFileAi,
@@ -13,7 +13,6 @@ import {
   IconFolder,
   IconHelp,
   IconInnerShadowTop,
-  IconListDetails,
   IconReport,
   IconSearch,
   IconSettings,
@@ -52,14 +51,14 @@ const data = {
       icon: IconUsers,
     },
     {
-      title: "Products",
+      title: "Add Product",
       url: "/admin/product",
       icon: IconFolder,
     },
     {
-      title: "Analytics",
-      url: "/admin/analytics",
-      icon: IconChartBar,
+      title: "Update Product",
+      url: "/admin/product/update",
+      icon: IconEdit,
     },
   ],
   navClouds: [

@@ -90,6 +90,23 @@ export class ApiClient {
     return response.json();
   }
 
+  async putFormData<T>(endpoint: string, formData: FormData): Promise<T> {
+    const headers = await this.getAuthHeaders(false); // Don't include Content-Type for FormData
+
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      method: "PUT",
+      headers,
+      credentials: "include",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
   async put<T>(endpoint: string, data?: any): Promise<T> {
     const headers = await this.getAuthHeaders();
 
@@ -158,6 +175,11 @@ export const api = {
     create: (productData: any) => apiClient.post("/products", productData),
     createWithImage: (formData: FormData) =>
       apiClient.postFormData("/products/with-image", formData),
+    update: (id: string, productData: any) =>
+      apiClient.put(`/products/${id}`, productData),
+    updateWithImage: (id: string, formData: FormData) =>
+      apiClient.putFormData(`/products/${id}/with-image`, formData),
+    delete: (id: string) => apiClient.delete(`/products/${id}`),
   },
 
   // Image endpoints

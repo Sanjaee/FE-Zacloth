@@ -58,7 +58,24 @@ export function ProductPreviewCard({
       return imagePreview;
     }
 
-    // Default placeholder - no URL input allowed
+    // If there's an existing image URL, use it
+    if (formData.imageUrl) {
+      // If it's already a full URL, return as is
+      if (formData.imageUrl.startsWith("http")) {
+        return formData.imageUrl;
+      }
+
+      // If it's a local asset path, prepend the backend URL
+      if (formData.imageUrl.startsWith("/assets/")) {
+        const backendUrl =
+          process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+        return `${backendUrl}${formData.imageUrl}`;
+      }
+
+      return formData.imageUrl;
+    }
+
+    // Default placeholder
     return "/placeholder-image.svg";
   };
 
