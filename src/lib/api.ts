@@ -160,6 +160,14 @@ export const api = {
       apiClient.put("/users/profile", profileData),
   },
 
+  // Visitor endpoints
+  visitors: {
+    track: (page: string, userAgent?: string, referrer?: string) =>
+      apiClient.post("/visitors/track", { page, userAgent, referrer }),
+    getStats: (period?: string) =>
+      apiClient.get(`/visitors/stats${period ? `?period=${period}` : ""}`),
+  },
+
   // Product endpoints
   products: {
     getAll: (params?: { page?: number; limit?: number; search?: string }) => {

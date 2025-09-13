@@ -3,6 +3,8 @@ import "../styles/globals.css";
 import type { AppProps } from "next/app";
 import { SWRConfig } from "swr";
 import { SessionProvider } from "next-auth/react";
+import { useVisitorTracking } from "@/hooks/useVisitorTracking";
+import { useRouter } from "next/router";
 
 const fetcher = (url: string) =>
   fetch(url, {
@@ -11,7 +13,18 @@ const fetcher = (url: string) =>
     },
   }).then((res) => res.json());
 
-export default function App({ Component, pageProps }: AppProps) {
+function AppContent({ Component, pageProps, router }: AppProps) {
+  useVisitorTracking();
+
+  return (
+    <>
+      <Toaster />
+      <Component {...pageProps} router={router} />
+    </>
+  );
+}
+
+export default function App({ Component, pageProps, router }: AppProps) {
   return (
     <SessionProvider session={pageProps.session}>
       <SWRConfig
@@ -23,8 +36,11 @@ export default function App({ Component, pageProps }: AppProps) {
           dedupingInterval: 2000,
         }}
       >
-        <Toaster />
-        <Component {...pageProps} />
+        <AppContent
+          Component={Component}
+          pageProps={pageProps}
+          router={router}
+        />
       </SWRConfig>
     </SessionProvider>
   );
