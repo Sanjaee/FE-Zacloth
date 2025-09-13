@@ -30,6 +30,7 @@ export function ImageSlider({
 }: ImageSliderProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [thumbnailScrollPosition, setThumbnailScrollPosition] = useState(0);
 
   // Auto play functionality
   React.useEffect(() => {
@@ -40,6 +41,18 @@ export function ImageSlider({
       return () => clearInterval(interval);
     }
   }, [autoPlay, autoPlayInterval, images.length]);
+
+  // Auto-scroll thumbnails when main image changes
+  React.useEffect(() => {
+    if (images.length > 6) {
+      const thumbnailsPerView = 6;
+      const maxScroll = Math.max(0, images.length - thumbnailsPerView);
+
+      // Calculate the optimal scroll position to keep current image visible
+      const optimalScroll = Math.max(0, Math.min(maxScroll, currentIndex - 2));
+      setThumbnailScrollPosition(optimalScroll);
+    }
+  }, [currentIndex, images.length]);
 
   const goToPrevious = () => {
     setCurrentIndex((prevIndex) =>
@@ -61,6 +74,15 @@ export function ImageSlider({
 
   const closeFullscreen = () => {
     setIsFullscreen(false);
+  };
+
+  const scrollThumbnailsLeft = () => {
+    setThumbnailScrollPosition((prev) => Math.max(0, prev - 1));
+  };
+
+  const scrollThumbnailsRight = () => {
+    const maxScroll = Math.max(0, images.length - 6); // Show 6 thumbnails at once
+    setThumbnailScrollPosition((prev) => Math.min(maxScroll, prev + 1));
   };
 
   // Handle keyboard navigation
@@ -108,7 +130,7 @@ export function ImageSlider({
           <img
             src={currentImage.imageUrl}
             alt={currentImage.altText || `Product image ${currentIndex + 1}`}
-            className="w-full object-cover rounded-lg cursor-pointer"
+            className="w-full h-full object-cover rounded-lg cursor-pointer"
             style={{ height }}
             onClick={showFullscreen ? openFullscreen : undefined}
           />
@@ -157,24 +179,84 @@ export function ImageSlider({
 
         {/* Thumbnails */}
         {showThumbnails && images.length > 1 && (
-          <div className="flex gap-2 m-3 overflow-x-auto">
-            {images.map((image, index) => (
-              <button
-                key={image.id}
-                onClick={() => goToSlide(index)}
-                className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
-                  index === currentIndex
-                    ? "border-blue-500 ring-2 ring-blue-200"
-                    : "border-gray-200 hover:border-gray-300"
-                }`}
+          <div className="relative m-3">
+            {/* Thumbnail Navigation Arrows */}
+            {images.length > 6 && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={scrollThumbnailsLeft}
+                  disabled={thumbnailScrollPosition === 0}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white shadow-lg border-gray-200 hover:bg-gray-50 disabled:opacity-50 h-8 w-8 p-0"
+                >
+                  <svg
+                    className="w-3 h-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={scrollThumbnailsRight}
+                  disabled={
+                    thumbnailScrollPosition >= Math.max(0, images.length - 6)
+                  }
+                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white shadow-lg border-gray-200 hover:bg-gray-50 disabled:opacity-50 h-8 w-8 p-0"
+                >
+                  <svg
+                    className="w-3 h-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </Button>
+              </>
+            )}
+
+            {/* Thumbnail Container */}
+            <div className="overflow-hidden mx-10">
+              <div
+                className="flex gap-2 transition-transform duration-300 ease-in-out"
+                style={{
+                  transform: `translateX(-${thumbnailScrollPosition * 72}px)`, // 64px (w-16) + 8px (gap-2)
+                }}
               >
-                <img
-                  src={image.imageUrl}
-                  alt={image.altText || `Thumbnail ${index + 1}`}
-                  className="w-full h-full object-cover"
-                />
-              </button>
-            ))}
+                {images.map((image, index) => (
+                  <button
+                    key={image.id}
+                    onClick={() => goToSlide(index)}
+                    className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
+                      index === currentIndex
+                        ? "border-blue-500 ring-2 ring-blue-200"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <img
+                      src={image.imageUrl}
+                      alt={image.altText || `Thumbnail ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
@@ -198,7 +280,7 @@ export function ImageSlider({
 
       {/* Fullscreen Modal */}
       {isFullscreen && (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 backdrop-blur-md bg-white/90 flex items-center justify-center animate-in fade-in duration-300">
           <div className="relative w-full h-full flex items-center justify-center p-4">
             {/* Close Button */}
             <Button
@@ -211,11 +293,15 @@ export function ImageSlider({
             </Button>
 
             {/* Fullscreen Image */}
-            <img
-              src={currentImage.imageUrl}
-              alt={currentImage.altText || `Product image ${currentIndex + 1}`}
-              className="max-w-full max-h-full object-contain"
-            />
+            <div className="relative animate-in zoom-in-95 duration-300 w-full h-full flex items-center justify-center">
+              <img
+                src={currentImage.imageUrl}
+                alt={
+                  currentImage.altText || `Product image ${currentIndex + 1}`
+                }
+                className="max-w-[600px] max-h-[600px] object-cover rounded-lg shadow-2xl"
+              />
+            </div>
 
             {/* Navigation Arrows */}
             {images.length > 1 && (

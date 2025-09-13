@@ -51,8 +51,8 @@ export default function ProductView({
     );
   }
 
-  // Only show skeleton on initial load when there are no products yet
-  if (isLoading && products.length === 0) {
+  // Only show skeleton on initial load when there are no products yet and not searching
+  if (isLoading && products.length === 0 && !isSearching) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {Array.from({ length: 8 }).map((_, index) => (
@@ -76,9 +76,10 @@ export default function ProductView({
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Products</h1>
           <p className="text-gray-600">
-            Showing {products.length} of {pagination.totalCount} products
-            {isSearching && (
-              <span className="ml-2 text-blue-600 text-sm">(Searching...)</span>
+            {isSearching ? (
+              <span className="text-blue-600">Searching products...</span>
+            ) : (
+              `Showing ${products.length} of ${pagination.totalCount} products`
             )}
           </p>
         </div>
@@ -103,11 +104,18 @@ export default function ProductView({
       </div>
 
       {/* Products Grid/List */}
-      {products.length === 0 ? (
+      {products.length === 0 && !isSearching ? (
         <div className="text-center py-12">
           <p className="text-gray-500 text-lg">
             No products found matching your criteria.
           </p>
+        </div>
+      ) : products.length === 0 && isSearching ? (
+        <div className="text-center py-12">
+          <div className="flex items-center justify-center space-x-2">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <p className="text-gray-500 text-lg">Searching...</p>
+          </div>
         </div>
       ) : (
         <div
