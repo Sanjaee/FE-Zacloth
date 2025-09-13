@@ -109,13 +109,9 @@ export function UserManagement() {
       // Import API client
       const { api } = await import("../../lib/api");
 
-      console.log("Generating QR for profile:", profileId);
-
       const data = (await api.qr.generateProfileSimple(
         profileId
       )) as ApiResponse<QRCodeData>;
-
-      console.log("QR Response:", data);
 
       if (data.success) {
         setQrCodeData({

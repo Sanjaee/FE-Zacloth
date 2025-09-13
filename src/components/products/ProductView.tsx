@@ -19,6 +19,7 @@ interface ProductViewProps {
   isLoading?: boolean;
   error?: Error;
   onPageChange: (page: number) => void;
+  isSearching?: boolean;
 }
 
 export default function ProductView({
@@ -27,6 +28,7 @@ export default function ProductView({
   isLoading,
   error,
   onPageChange,
+  isSearching = false,
 }: ProductViewProps) {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
@@ -49,7 +51,8 @@ export default function ProductView({
     );
   }
 
-  if (isLoading) {
+  // Only show skeleton on initial load when there are no products yet
+  if (isLoading && products.length === 0) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {Array.from({ length: 8 }).map((_, index) => (
@@ -74,6 +77,9 @@ export default function ProductView({
           <h1 className="text-2xl font-bold text-gray-900">Products</h1>
           <p className="text-gray-600">
             Showing {products.length} of {pagination.totalCount} products
+            {isSearching && (
+              <span className="ml-2 text-blue-600 text-sm">(Searching...)</span>
+            )}
           </p>
         </div>
 

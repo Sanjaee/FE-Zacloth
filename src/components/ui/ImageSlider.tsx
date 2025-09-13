@@ -106,7 +106,7 @@ export function ImageSlider({
           <img
             src={currentImage.imageUrl}
             alt={currentImage.altText || `Product image ${currentIndex + 1}`}
-            className="w-full h-full object-cover rounded-lg cursor-pointer"
+            className="w-full h-[500px] object-cover rounded-lg cursor-pointer"
             onClick={showFullscreen ? openFullscreen : undefined}
           />
 
@@ -154,7 +154,7 @@ export function ImageSlider({
 
         {/* Thumbnails */}
         {showThumbnails && images.length > 1 && (
-          <div className="flex gap-2 mt-3 overflow-x-auto">
+          <div className="flex gap-2 m-3 overflow-x-auto">
             {images.map((image, index) => (
               <button
                 key={image.id}

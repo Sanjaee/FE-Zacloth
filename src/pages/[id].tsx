@@ -10,6 +10,7 @@ import { ImageSlider } from "@/components/ui/ImageSlider";
 interface Product {
   id: string;
   name: string;
+  slug: string;
   brand: string;
   category: string;
   catalogId: string;

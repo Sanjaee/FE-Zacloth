@@ -1,4 +1,5 @@
 import useSWR from "swr";
+import { useState, useEffect } from "react";
 import { Product } from "../types/product";
 
 interface PaginationInfo {
@@ -26,6 +27,9 @@ interface UseProductsParams {
 }
 
 export function useProducts(params: UseProductsParams = {}) {
+  const [isSearching, setIsSearching] = useState(false);
+  const [previousSearch, setPreviousSearch] = useState(params.search || "");
+
   // Build query string
   const queryParams = new URLSearchParams();
 
@@ -45,6 +49,22 @@ export function useProducts(params: UseProductsParams = {}) {
 
   const { data, error, isLoading, mutate } = useSWR<ProductsResponse>(url);
 
+  // Track search state
+  useEffect(() => {
+    const currentSearch = params.search || "";
+    if (currentSearch !== previousSearch) {
+      setIsSearching(true);
+      setPreviousSearch(currentSearch);
+    }
+  }, [params.search, previousSearch]);
+
+  // Reset searching state when data is loaded
+  useEffect(() => {
+    if (!isLoading && isSearching) {
+      setIsSearching(false);
+    }
+  }, [isLoading, isSearching]);
+
   return {
     products: data?.products || [],
     pagination: data?.pagination || {
@@ -56,6 +76,7 @@ export function useProducts(params: UseProductsParams = {}) {
       hasPrevPage: false,
     },
     isLoading,
+    isSearching,
     error,
     mutate,
   };

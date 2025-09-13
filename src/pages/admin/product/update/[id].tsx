@@ -12,6 +12,7 @@ import {
   SidebarProvider,
 } from "../../../../components/ui/sidebar";
 import { ProductPreviewCard } from "../../../../components/admin/ProductPreviewCard";
+import { generateSlug } from "../../../../utils/slugGenerator";
 
 interface SkuData {
   size: string;
@@ -31,6 +32,7 @@ interface ProductFormData {
   currentPrice: number;
   fullPrice: number;
   name: string;
+  slug: string;
   prodigyId: string;
   imageUrl: string;
   genders: string[];
@@ -58,6 +60,7 @@ export default function ProductUpdateForm() {
     currentPrice: 0,
     fullPrice: 0,
     name: "",
+    slug: "",
     prodigyId: "",
     imageUrl: "",
     genders: [],
@@ -102,6 +105,7 @@ export default function ProductUpdateForm() {
           currentPrice: product.currentPrice || 0,
           fullPrice: product.fullPrice || 0,
           name: product.name || "",
+          slug: product.slug || "",
           prodigyId: product.prodigyId || "",
           imageUrl: product.imageUrl || "",
           genders: product.genders || [],
@@ -157,10 +161,19 @@ export default function ProductUpdateForm() {
   }, [id, status, session, router, toast]);
 
   const handleInputChange = (field: keyof ProductFormData, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    setFormData((prev) => {
+      const newData = {
+        ...prev,
+        [field]: value,
+      };
+
+      // Auto-generate slug when name changes
+      if (field === "name" && value) {
+        newData.slug = generateSlug(value);
+      }
+
+      return newData;
+    });
   };
 
   const addSku = () => {
@@ -608,6 +621,25 @@ export default function ProductUpdateForm() {
                               className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                               required
                             />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-2">
+                              Slug (URL) *
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.slug}
+                              onChange={(e) =>
+                                handleInputChange("slug", e.target.value)
+                              }
+                              className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              placeholder="Auto-generated from product name"
+                              required
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                              URL-friendly version of product name.
+                              Auto-generated when you type the product name.
+                            </p>
                           </div>
                           <div>
                             <label className="block text-sm font-medium mb-2">

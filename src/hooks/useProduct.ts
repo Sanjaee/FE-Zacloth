@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 interface Product {
   id: string;
   name: string;
+  slug: string;
   brand: string;
   category: string;
   catalogId: string;
@@ -19,6 +20,12 @@ interface Product {
   updatedAt: string;
   genders: string[];
   subCategory: string[];
+  images: Array<{
+    id: string;
+    imageUrl: string;
+    altText?: string;
+    order: number;
+  }>;
   skuData: Array<{
     id: string;
     size: string;
@@ -72,7 +79,12 @@ export const useProduct = (
       try {
         const backendUrl =
           process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-        const response = await fetch(`${backendUrl}/products/${id}`);
+
+        // Check if the parameter is a slug (contains hyphens and no special characters) or ID
+        const isSlug = /^[a-z0-9-]+$/.test(id) && id.includes("-");
+        const endpoint = isSlug ? `/products/slug/${id}` : `/products/${id}`;
+
+        const response = await fetch(`${backendUrl}${endpoint}`);
 
         if (!response.ok) {
           if (response.status === 404) {
@@ -85,10 +97,7 @@ export const useProduct = (
 
         const data = await response.json();
         const productData = data.product;
-
-        console.log("Product data received:", productData);
-        console.log("Product imageUrl:", productData?.imageUrl);
-
+        
         // Cache the result
         productCache.set(id, { data: productData, timestamp: Date.now() });
 

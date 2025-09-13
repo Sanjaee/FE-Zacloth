@@ -50,10 +50,6 @@ export default async function handler(
     }
 
     const data: ProductsResponse = await response.json();
-    console.log("API Response:", {
-      productsCount: data.products?.length || 0,
-      pagination: data.pagination,
-    });
 
     // Set cache headers for better performance
     res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=600");

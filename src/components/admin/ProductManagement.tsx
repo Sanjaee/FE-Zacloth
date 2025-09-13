@@ -13,6 +13,7 @@ import {
 import { useToast } from "../../hooks/use-toast";
 import { AppSidebar } from "./app-sidebar";
 import { SiteHeader } from "./site-header";
+import { generateSlug } from "../../utils/slugGenerator";
 import { SidebarInset, SidebarProvider } from "../ui/sidebar";
 import { ProductPreviewCard } from "./ProductPreviewCard";
 
@@ -34,6 +35,7 @@ interface ProductFormData {
   currentPrice: number;
   fullPrice: number;
   name: string;
+  slug: string;
   prodigyId: string;
   imageUrl: string;
   genders: string[];
@@ -57,6 +59,7 @@ export function ProductManagement() {
     currentPrice: 0,
     fullPrice: 0,
     name: "",
+    slug: "",
     prodigyId: "",
     imageUrl: "",
     genders: [],
@@ -77,10 +80,19 @@ export function ProductManagement() {
   const [imageOrder, setImageOrder] = useState<number[]>([]);
 
   const handleInputChange = (field: keyof ProductFormData, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    setFormData((prev) => {
+      const newData = {
+        ...prev,
+        [field]: value,
+      };
+
+      // Auto-generate slug when name changes
+      if (field === "name" && value) {
+        newData.slug = generateSlug(value);
+      }
+
+      return newData;
+    });
   };
 
   const addSku = () => {
@@ -176,8 +188,8 @@ export function ProductManagement() {
       }
 
       if (newFiles.length > 0) {
-        setSelectedImages(newFiles);
-        setImagePreviews(newPreviews);
+        setSelectedImages((prev) => [...prev, ...newFiles]);
+        setImagePreviews((prev) => [...prev, ...newPreviews]);
         // Initialize order array starting from current length
         const currentLength = selectedImages.length;
         const newOrder = Array.from(
@@ -325,6 +337,7 @@ export function ProductManagement() {
         currentPrice: 0,
         fullPrice: 0,
         name: "",
+        slug: "",
         prodigyId: "",
         imageUrl: "",
         genders: [],
@@ -500,6 +513,25 @@ export function ProductManagement() {
                               className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                               required
                             />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-2">
+                              Slug (URL) *
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.slug}
+                              onChange={(e) =>
+                                handleInputChange("slug", e.target.value)
+                              }
+                              className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              placeholder="Auto-generated from product name"
+                              required
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                              URL-friendly version of product name.
+                              Auto-generated when you type the product name.
+                            </p>
                           </div>
                           <div>
                             <label className="block text-sm font-medium mb-2">

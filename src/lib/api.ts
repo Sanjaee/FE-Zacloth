@@ -172,6 +172,7 @@ export const api = {
       return apiClient.get(`/products${query ? `?${query}` : ""}`);
     },
     getById: (id: string) => apiClient.get(`/products/${id}`),
+    getBySlug: (slug: string) => apiClient.get(`/products/slug/${slug}`),
     create: (productData: any) => apiClient.post("/products", productData),
     createWithImage: (formData: FormData) =>
       apiClient.postFormData("/products/with-image", formData),

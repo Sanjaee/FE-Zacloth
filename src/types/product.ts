@@ -18,6 +18,7 @@ export interface Product {
   fullPrice: number;
   genders: string[];
   name: string;
+  slug: string;
   prodigyId: string;
   imageUrl: string;
   skuData: SkuData[];

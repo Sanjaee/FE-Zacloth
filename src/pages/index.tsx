@@ -18,7 +18,7 @@ export default function Home() {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { products, pagination, isLoading, error } = useProducts({
+  const { products, pagination, isLoading, isSearching, error } = useProducts({
     page: currentPage,
     limit: 12,
     search: searchTerm,
@@ -46,6 +46,7 @@ export default function Home() {
           products={products}
           pagination={pagination}
           isLoading={isLoading}
+          isSearching={isSearching}
           error={error}
           onPageChange={handlePageChange}
         />
