@@ -14,7 +14,9 @@ interface PaymentSimulationProps {
   productData: {
     id: string;
     name: string;
-    price: number;
+    currentPrice?: number;
+    price?: number;
+    fullPrice?: number;
     imageUrl: string;
   };
   addressData: any;

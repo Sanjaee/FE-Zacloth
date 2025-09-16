@@ -206,7 +206,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
         !!session // Pass authentication status
       );
 
-      if (result) {
+      if (result && Array.isArray(result)) {
         // Find the cost for the selected service
         const selectedService = result.find(
           (item: any) => item.code === shippingData.courier
