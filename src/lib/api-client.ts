@@ -159,6 +159,9 @@ export const api = {
     getProfile: () => apiClient.get("/users/profile"),
     updateProfile: (profileData: any) =>
       apiClient.put("/users/profile", profileData),
+    getAddresses: () => apiClient.get("/users/addresses"),
+    createAddress: (addressData: any) =>
+      apiClient.post("/users/addresses", addressData),
   },
 
   // Visitor endpoints
