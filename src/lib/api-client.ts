@@ -184,6 +184,7 @@ export const api = {
       return apiClient.get(`/products${queryString ? `?${queryString}` : ""}`);
     },
     getById: (id: string) => apiClient.get(`/products/${id}`),
+    getForCheckout: (id: string) => apiClient.get(`/products/checkout/${id}`),
     create: (productData: any) => apiClient.post("/products", productData),
     update: (id: string, productData: any) =>
       apiClient.put(`/products/${id}`, productData),
@@ -201,5 +202,18 @@ export const api = {
     generate: (data: any) => apiClient.post("/qr/generate", data),
     generateProfileSimple: (profileId: string) =>
       apiClient.get(`/qr/profile/${profileId}/simple`),
+  },
+
+  // Payment endpoints
+  payments: {
+    createProductPayment: (paymentData: any) =>
+      apiClient.post("/payments/create-product-payment", paymentData),
+    getPaymentStatus: (orderId: string) =>
+      apiClient.get(`/payments/status/${orderId}`),
+    getUserPayments: (userId: string) =>
+      apiClient.get(`/payments/user/${userId}`),
+    getPendingPayment: () => apiClient.get("/payments/pending"),
+    cancelPayment: (orderId: string) =>
+      apiClient.post(`/payments/cancel/${orderId}`),
   },
 };

@@ -3,9 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { useRajaOngkir } from "@/hooks/useRajaOngkir";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { formatRupiahWithSymbol } from "@/utils/currencyFormatter";
+import { useRouter } from "next/router";
+import { api } from "@/lib/api-client";
 
 interface PaymentSimulationProps {
   productData: {
@@ -23,19 +26,17 @@ export const PaymentSimulation: React.FC<PaymentSimulationProps> = ({
   addressData,
   shippingData,
 }) => {
-  const { simulatePayment } = useRajaOngkir();
   const { toast } = useToast();
+  const router = useRouter();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentResult, setPaymentResult] = useState<any>(null);
+  const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
+  const [selectedBank, setSelectedBank] = useState("bca");
 
-  // Calculate costs
-  const productPrice = productData.price;
-  const shippingCost =
-    shippingData?.cost?.find(
-      (c: any) =>
-        c.code === shippingData.courier && c.service === shippingData.service
-    )?.cost || 0;
-  const adminFee = Math.round(productPrice * 0.05); // 5% admin fee
+  // Calculate costs with robust fallbacks
+  const productPrice =
+    productData.currentPrice || productData.price || productData.fullPrice || 0;
+  const shippingCost = shippingData?.cost || 0;
+  const adminFee = productPrice > 0 ? Math.round(productPrice * 0.05) : 0; // 5% admin fee
   const totalAmount = productPrice + shippingCost + adminFee;
 
   const handlePayment = async () => {
@@ -48,102 +49,78 @@ export const PaymentSimulation: React.FC<PaymentSimulationProps> = ({
       return;
     }
 
+    // Validate required data
+    if (!productData.id) {
+      toast({
+        title: "Error",
+        description: "Product information is missing",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!addressData.id) {
+      toast({
+        title: "Error",
+        description: "Address information is missing",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (productPrice <= 0) {
+      toast({
+        title: "Error",
+        description: "Product price is invalid",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsProcessing(true);
     try {
       const paymentData = {
-        userId: localStorage.getItem("userId") || "user123", // Get from auth context
         productId: productData.id,
-        addressId: "temp_address_id", // This would be the saved address ID
+        addressId: addressData.id,
         origin: shippingData.origin,
         destination: shippingData.destination,
         weight: shippingData.weight,
         courier: shippingData.courier,
         service: shippingData.service,
         productPrice: productPrice,
+        shippingCost: shippingCost,
+        adminFee: adminFee,
+        totalAmount: totalAmount,
+        paymentMethod: paymentMethod,
+        bank: paymentMethod === "bank_transfer" ? selectedBank : undefined,
       };
 
-      const result = await simulatePayment(paymentData);
+      const response = (await api.payments.createProductPayment(
+        paymentData
+      )) as any;
 
-      if (result) {
-        setPaymentResult(result);
+      if (response.success) {
+        // Redirect to payment page with orderId
+        router.push(`/payment/${response.data.orderId}`);
+      } else {
         toast({
-          title: "Payment Successful!",
-          description: "Your order has been processed successfully",
+          title: "Payment Failed",
+          description: response.message || "Failed to create payment",
+          variant: "destructive",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Payment error:", error);
       toast({
         title: "Payment Failed",
-        description: "There was an error processing your payment",
+        description:
+          error.message || "There was an error processing your payment",
         variant: "destructive",
       });
     } finally {
       setIsProcessing(false);
     }
   };
-
-  if (paymentResult) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-green-600">Payment Successful!</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="bg-green-50 p-4 rounded-lg">
-            <h3 className="font-semibold text-green-800 mb-2">Order Details</h3>
-            <div className="space-y-2 text-sm">
-              <p>
-                <strong>Order ID:</strong> {paymentResult.payment.orderId}
-              </p>
-              <p>
-                <strong>Transaction ID:</strong>{" "}
-                {paymentResult.payment.transactionId}
-              </p>
-              <p>
-                <strong>Status:</strong>{" "}
-                <Badge variant="default" className="bg-green-500">
-                  SUCCESS
-                </Badge>
-              </p>
-              <p>
-                <strong>Paid At:</strong>{" "}
-                {new Date(paymentResult.payment.paidAt).toLocaleString()}
-              </p>
-            </div>
-          </div>
-
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <h3 className="font-semibold text-blue-800 mb-2">
-              Shipping Details
-            </h3>
-            <div className="space-y-2 text-sm">
-              <p>
-                <strong>Courier:</strong>{" "}
-                {paymentResult.shipment.courier.toUpperCase()}
-              </p>
-              <p>
-                <strong>Service:</strong> {paymentResult.shipment.service}
-              </p>
-              <p>
-                <strong>ETD:</strong> {paymentResult.shipment.etd} days
-              </p>
-              <p>
-                <strong>Cost:</strong>{" "}
-                {formatRupiahWithSymbol(paymentResult.shipment.cost)}
-              </p>
-            </div>
-          </div>
-
-          <Button
-            onClick={() => (window.location.href = "/dashboard")}
-            className="w-full"
-          >
-            Go to Dashboard
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <Card>
@@ -199,25 +176,72 @@ export const PaymentSimulation: React.FC<PaymentSimulationProps> = ({
                 {shippingData.service}
               </p>
               <p>Weight: {shippingData.weight}g</p>
-              {shippingData.cost?.find(
-                (c: any) =>
-                  c.code === shippingData.courier &&
-                  c.service === shippingData.service
-              )?.etd && (
-                <p>
-                  ETD:{" "}
-                  {
-                    shippingData.cost.find(
-                      (c: any) =>
-                        c.code === shippingData.courier &&
-                        c.service === shippingData.service
-                    ).etd
-                  }
-                </p>
-              )}
+              {shippingData.etd && <p>ETD: {shippingData.etd}</p>}
             </div>
           </div>
         )}
+
+        <Separator />
+
+        {/* Payment Method Selection */}
+        <div>
+          <h4 className="font-semibold mb-3">Payment Method</h4>
+          <RadioGroup
+            value={paymentMethod}
+            onValueChange={setPaymentMethod}
+            className="space-y-3"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="bank_transfer" id="bank_transfer" />
+              <Label htmlFor="bank_transfer">Bank Transfer</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="gopay" id="gopay" />
+              <Label htmlFor="gopay">GoPay / QRIS</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="credit_card" id="credit_card" />
+              <Label htmlFor="credit_card">Credit Card</Label>
+            </div>
+          </RadioGroup>
+
+          {/* Bank Selection for Bank Transfer */}
+          {paymentMethod === "bank_transfer" && (
+            <div className="mt-3 ml-6">
+              <Label className="text-sm font-medium">Select Bank:</Label>
+              <RadioGroup
+                value={selectedBank}
+                onValueChange={setSelectedBank}
+                className="mt-2 space-y-2"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="bca" id="bca" />
+                  <Label htmlFor="bca" className="text-sm">
+                    BCA
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="bni" id="bni" />
+                  <Label htmlFor="bni" className="text-sm">
+                    BNI
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="bri" id="bri" />
+                  <Label htmlFor="bri" className="text-sm">
+                    BRI
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="mandiri" id="mandiri" />
+                  <Label htmlFor="mandiri" className="text-sm">
+                    Mandiri
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+          )}
+        </div>
 
         <Separator />
 
@@ -252,7 +276,7 @@ export const PaymentSimulation: React.FC<PaymentSimulationProps> = ({
         </Button>
 
         <p className="text-xs text-gray-500 text-center">
-          This is a simulation. No real payment will be processed.
+          You will be redirected to payment page after clicking Pay Now.
         </p>
       </CardContent>
     </Card>

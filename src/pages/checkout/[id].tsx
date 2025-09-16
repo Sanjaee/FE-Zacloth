@@ -16,17 +16,34 @@ const CheckoutPage: React.FC = () => {
   const [hasAddresses, setHasAddresses] = useState<boolean>(false);
   const [loadingAddresses, setLoadingAddresses] = useState<boolean>(true);
 
-  // Mock product data - in real app, this would come from props or API
+  // Get product data from URL parameter
   useEffect(() => {
-    // Get product data from query params or context
-    const mockProduct = {
-      id: (router.query.productId as string) || "prod123",
-      name: (router.query.name as string) || "Sample Product",
-      price: parseInt(router.query.price as string) || 500000,
-      imageUrl: (router.query.imageUrl as string) || "/placeholder-image.svg",
+    const getProductData = async () => {
+      try {
+        // Get product ID from URL parameter
+        const productId = router.query.id as string;
+
+        if (!productId) {
+          router.push("/");
+          return;
+        }
+
+        // Fetch product from API for checkout
+        const response = (await api.products.getForCheckout(productId)) as any;
+        if (response.success) {
+          setProductData(response.data);
+        } else {
+          router.push("/");
+        }
+      } catch (error) {
+        router.push("/");
+      }
     };
-    setProductData(mockProduct);
-  }, [router.query]);
+
+    if (router.isReady) {
+      getProductData();
+    }
+  }, [router.isReady, router.query.id]);
 
   // Check for existing user addresses
   useEffect(() => {
@@ -118,7 +135,6 @@ const CheckoutPage: React.FC = () => {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
           </Button>
-         
         </div>
 
         {/* Main Content */}

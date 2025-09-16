@@ -75,14 +75,11 @@ export const AddressForm: React.FC<AddressFormProps> = ({
     if (selectedAddress) {
       const destinationId =
         selectedAddress.subdistrictId || selectedAddress.cityId;
-      console.log("Selected address:", selectedAddress);
-      console.log("Destination ID:", destinationId);
       if (destinationId) {
         setShippingData((prev) => ({
           ...prev,
           destination: destinationId.toString(),
         }));
-        console.log("Destination set to:", destinationId.toString());
       }
     }
   }, [selectedAddress]);
@@ -157,7 +154,11 @@ export const AddressForm: React.FC<AddressFormProps> = ({
 
   // Handle district selection
   const handleDistrictChange = (districtId: string, districtName: string) => {
-    setFormData((prev) => ({ ...prev, districtId, districtName } as any));
+    setFormData((prev) => ({
+      ...prev,
+      subdistrictId: districtId,
+      subdistrictName: districtName,
+    }));
     setShippingData((prev) => ({ ...prev, destination: districtId }));
   };
 
@@ -206,9 +207,18 @@ export const AddressForm: React.FC<AddressFormProps> = ({
       );
 
       if (result) {
+        // Find the cost for the selected service
+        const selectedService = result.find(
+          (item: any) => item.code === shippingData.courier
+        );
+        const serviceCost = selectedService?.costs?.find(
+          (cost: any) => cost.service === shippingData.service
+        );
+
         onShippingCalculate({
           ...shippingData,
-          cost: result,
+          cost: serviceCost?.cost || 0,
+          etd: serviceCost?.etd || "2-3 hari",
         });
         toast({
           title: "Success",
@@ -269,35 +279,26 @@ export const AddressForm: React.FC<AddressFormProps> = ({
     setIsAddressSaved(false);
     setShowAddressForm(true);
     // Reset destination and district so user reselects
-    setFormData(
-      (prev) =>
-        ({
-          ...prev,
-          districtId: "",
-          districtName: "",
-        } as any)
-    );
+    setFormData((prev) => ({
+      ...prev,
+      subdistrictId: "",
+      subdistrictName: "",
+    }));
     setShippingData((prev) => ({ ...prev, destination: "" }));
   };
 
   const handleSelectExistingAddress = (address: any) => {
-    console.log("Selecting existing address:", address);
     if (onAddressSelect) {
       onAddressSelect(address);
     }
     // Set destination for shipping calculation
     // Use subdistrictId if available, otherwise fallback to cityId
     const destinationId = address.subdistrictId || address.cityId;
-    console.log("Destination ID from existing address:", destinationId);
     if (destinationId) {
       setShippingData((prev) => ({
         ...prev,
         destination: destinationId.toString(),
       }));
-      console.log(
-        "Destination set from existing address:",
-        destinationId.toString()
-      );
     }
   };
 
@@ -473,7 +474,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                   open={openDistrict}
                   onOpenChange={setOpenDistrict}
                   options={districts}
-                  selectedValue={(formData as any).districtId}
+                  selectedValue={(formData as any).subdistrictId}
                   onSelect={(option) =>
                     handleDistrictChange(
                       option.id?.toString() || "",
@@ -484,7 +485,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                   title="Select District"
                   searchPlaceholder="Search district..."
                   disabled={!formData.cityId}
-                  displayValue={(formData as any).districtName}
+                  displayValue={(formData as any).subdistrictName}
                 />
               </div>
               <div />
@@ -589,17 +590,6 @@ export const AddressForm: React.FC<AddressFormProps> = ({
               />
             </div>
           </div>
-
-          {/* Debug info - remove in production */}
-          {process.env.NODE_ENV === "development" && (
-            <div className="text-xs text-gray-500 p-2 bg-gray-100 rounded">
-              <div>Destination: {shippingData.destination || "Not set"}</div>
-              <div>Courier: {shippingData.courier || "Not selected"}</div>
-              <div>Service: {shippingData.service || "Not selected"}</div>
-              <div>Session Status: {status}</div>
-              <div>User: {session?.user?.username || "Not logged in"}</div>
-            </div>
-          )}
 
           <Button
             onClick={handleCalculateShipping}

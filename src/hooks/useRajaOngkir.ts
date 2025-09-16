@@ -156,39 +156,6 @@ export const useRajaOngkir = () => {
     }
   };
 
-  // Simulate payment
-  const simulatePayment = async (paymentData: {
-    userId: string;
-    productId: string;
-    addressId: string;
-    origin: string;
-    destination: string;
-    weight: number;
-    courier: string;
-    service: string;
-    productPrice: number;
-  }) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await apiClient.post<any>(
-        "/rajaongkir/simulate-payment",
-        paymentData
-      );
-      if (data.success) {
-        return data.data;
-      } else {
-        setError(data.message || "Payment simulation failed");
-        return null;
-      }
-    } catch (err) {
-      setError("Payment simulation failed");
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
     fetchProvinces();
     fetchCouriers();
@@ -204,6 +171,5 @@ export const useRajaOngkir = () => {
     fetchCities,
     fetchDistricts,
     getShippingCost,
-    simulatePayment,
   };
 };

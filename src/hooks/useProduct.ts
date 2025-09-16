@@ -96,8 +96,8 @@ export const useProduct = (
         }
 
         const data = await response.json();
-        const productData = data.product;
-        
+        const productData = data.data || data.product;
+
         // Cache the result
         productCache.set(id, { data: productData, timestamp: Date.now() });
 

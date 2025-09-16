@@ -160,7 +160,9 @@ const ProductDetailPage: React.FC = () => {
   };
 
   return (
-    <div className={`${geistSans.variable} ${geistMono.variable} font-sans min-h-screen bg-gray-50`}>
+    <div
+      className={`${geistSans.variable} ${geistMono.variable} font-sans min-h-screen bg-gray-50`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Breadcrumb */}
         <nav className="flex mb-8" aria-label="Breadcrumb">
@@ -360,7 +362,11 @@ const ProductDetailPage: React.FC = () => {
 
             {/* Action Buttons */}
             <div className="space-y-3">
-              <Button onClick={() => router.push(`/checkout`)} className="w-full" size="lg">
+              <Button
+                onClick={() => router.push(`/checkout/${product.id}`)}
+                className="w-full"
+                size="lg"
+              >
                 Beli Sekarang
               </Button>
               <Button variant="outline" className="w-full" size="lg">

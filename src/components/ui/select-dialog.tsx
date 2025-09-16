@@ -95,6 +95,7 @@ export const SelectDialog: React.FC<SelectDialogProps> = ({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
+           
           </DialogHeader>
 
           <div className="space-y-4">
