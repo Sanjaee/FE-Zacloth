@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { useRajaOngkir } from "@/hooks/useRajaOngkir";
 import { useToast } from "@/hooks/use-toast";
 import { SelectDialog } from "@/components/ui/select-dialog";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/router";
 
 interface AddressFormProps {
   onAddressSubmit: (addressData: any) => void;
@@ -24,6 +26,8 @@ export const AddressForm: React.FC<AddressFormProps> = ({
   selectedAddress,
   onAddressSelect,
 }) => {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const {
     provinces,
     cities,
@@ -172,12 +176,33 @@ export const AddressForm: React.FC<AddressFormProps> = ({
       return;
     }
 
+    // Check if user is authenticated
+    if (status === "loading") {
+      toast({
+        title: "Loading",
+        description: "Please wait while we check your authentication...",
+      });
+      return;
+    }
+
+    // Allow guest users to calculate shipping cost
+    // if (!session) {
+    //   toast({
+    //     title: "Authentication Required",
+    //     description: "Please login to calculate shipping cost",
+    //     variant: "destructive",
+    //   });
+    //   router.push("/login");
+    //   return;
+    // }
+
     try {
       const result = await getShippingCost(
         shippingData.origin,
         shippingData.destination,
         shippingData.weight,
-        shippingData.courier
+        shippingData.courier,
+        !!session // Pass authentication status
       );
 
       if (result) {
@@ -190,12 +215,27 @@ export const AddressForm: React.FC<AddressFormProps> = ({
           description: "Shipping cost calculated successfully",
         });
       }
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: "Failed to calculate shipping cost",
-        variant: "destructive",
-      });
+    } catch (err: any) {
+      console.error("Shipping cost error:", err);
+
+      // Handle specific error cases
+      if (
+        err.message?.includes("401") ||
+        err.message?.includes("Unauthorized")
+      ) {
+        toast({
+          title: "Authentication Error",
+          description: "Your session has expired. Please login again.",
+          variant: "destructive",
+        });
+        router.push("/login");
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to calculate shipping cost. Please try again.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -556,6 +596,8 @@ export const AddressForm: React.FC<AddressFormProps> = ({
               <div>Destination: {shippingData.destination || "Not set"}</div>
               <div>Courier: {shippingData.courier || "Not selected"}</div>
               <div>Service: {shippingData.service || "Not selected"}</div>
+              <div>Session Status: {status}</div>
+              <div>User: {session?.user?.username || "Not logged in"}</div>
             </div>
           )}
 
@@ -565,10 +607,14 @@ export const AddressForm: React.FC<AddressFormProps> = ({
             disabled={
               !shippingData.destination ||
               !shippingData.courier ||
-              !shippingData.service
+              !shippingData.service ||
+              loading ||
+              status === "loading"
             }
           >
-            Calculate Shipping Cost
+            {loading || status === "loading"
+              ? "Loading..."
+              : "Calculate Shipping Cost"}
           </Button>
         </CardContent>
       </Card>

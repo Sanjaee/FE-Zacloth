@@ -123,12 +123,19 @@ export const useRajaOngkir = () => {
     origin: string,
     destination: string,
     weight: number,
-    courier: string
+    courier: string,
+    isAuthenticated: boolean = false
   ) => {
     try {
       setLoading(true);
       setError(null);
-      const data = await apiClient.post<any>("/rajaongkir/cost", {
+
+      // Use guest route if not authenticated
+      const endpoint = isAuthenticated
+        ? "/rajaongkir/cost"
+        : "/rajaongkir/cost-guest";
+
+      const data = await apiClient.post<any>(endpoint, {
         origin,
         destination,
         weight,
@@ -140,9 +147,10 @@ export const useRajaOngkir = () => {
         setError(data.message || "Failed to get shipping cost");
         return null;
       }
-    } catch (err) {
-      setError("Failed to get shipping cost");
-      return null;
+    } catch (err: any) {
+      console.error("Shipping cost error:", err);
+      setError(err.message || "Failed to get shipping cost");
+      throw err; // Re-throw to let the component handle it
     } finally {
       setLoading(false);
     }
