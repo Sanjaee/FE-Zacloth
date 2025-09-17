@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: "standalone",
   images: {
-    domains: ["static.nike.com", "localhost", "api.zascript.com", "127.0.0.1"],
+    domains: ["static.nike.com", "localhost", "api.zascript.com", "127.0.0.1", "res.cloudinary.com"],
     remotePatterns: [
       {
         protocol: "http",

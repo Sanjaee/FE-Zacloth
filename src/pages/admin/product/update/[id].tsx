@@ -61,6 +61,11 @@ interface ProductFormData {
     altText: string;
     order: number;
   }>;
+  images?: Array<{
+    imageUrl: string;
+    altText: string;
+    order: number;
+  }>;
 }
 
 export default function ProductUpdateForm() {
@@ -266,6 +271,38 @@ export default function ProductUpdateForm() {
     }));
   };
 
+  const uploadToCloudinary = async (file: File): Promise<string> => {
+    try {
+      // Convert file to base64
+      const toBase64 = (file: File): Promise<string> =>
+        new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = (error) => reject(error);
+        });
+
+      const base64 = await toBase64(file);
+
+      const response = await fetch("/api/cloudinary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ file: base64 }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Upload failed");
+      }
+
+      const data = await response.json();
+      return data.url;
+    } catch (error) {
+      console.error("Cloudinary upload error:", error);
+      throw new Error("Failed to upload image to Cloudinary");
+    }
+  };
+
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
@@ -308,8 +345,10 @@ export default function ProductUpdateForm() {
       }
 
       if (newFiles.length > 0) {
-        setSelectedImages(newFiles);
-        setImagePreviews(newPreviews);
+        // Just store the files and previews, don't upload yet
+        setSelectedImages((prev) => [...prev, ...newFiles]);
+        setImagePreviews((prev) => [...prev, ...newPreviews]);
+
         // Initialize order array starting from current length
         const currentLength = selectedImages.length;
         const newOrder = Array.from(
@@ -317,6 +356,11 @@ export default function ProductUpdateForm() {
           (_, i) => currentLength + i
         );
         setImageOrder((prev) => [...prev, ...newOrder]);
+
+        toast({
+          title: "Success",
+          description: `${newFiles.length} gambar berhasil dipilih. Gambar akan diupload saat produk disimpan.`,
+        });
       }
     }
   };
@@ -558,24 +602,39 @@ export default function ProductUpdateForm() {
             : formData.imageUrl,
       };
 
-      if (selectedImages.length > 0) {
-        // Create FormData for multiple images upload
-        const formDataWithImages = new FormData();
+      if (selectedImages && selectedImages.length > 0) {
+        // Upload new images to Cloudinary
+        const imageUrls: string[] = [];
+        try {
+          for (const file of selectedImages) {
+            const imageUrl = await uploadToCloudinary(file);
+            imageUrls.push(imageUrl);
+          }
 
-        // Add all image files
-        selectedImages.forEach((image) => {
-          formDataWithImages.append("images", image);
-        });
+          // Prepare form data with uploaded image URLs
+          const formDataWithNewImages = {
+            ...formDataWithImageOrder,
+            images: imageUrls.map((url, index) => ({
+              imageUrl: url,
+              altText: `${formData.name || "Product"} - New Image ${index + 1}`,
+              order: index,
+            })),
+          };
 
-        // Add all form data as JSON string with existing image order
-        formDataWithImages.append(
-          "data",
-          JSON.stringify(formDataWithImageOrder)
-        );
-
-        data = await api.products.updateWithImage(id, formDataWithImages);
+          // Use updateWithImage API with new images from Cloudinary
+          data = await api.products.updateWithImage(id, formDataWithNewImages);
+        } catch (uploadError: any) {
+          console.error("Image upload error:", uploadError);
+          toast({
+            title: "Error",
+            description:
+              uploadError.message || "Gagal upload gambar ke Cloudinary",
+            variant: "destructive",
+          });
+          return;
+        }
       } else {
-        // Use regular API call without image but with existing image order
+        // Use regular API call without new images but with existing image order
         data = await api.products.update(id, formDataWithImageOrder);
       }
 
@@ -1083,8 +1142,9 @@ export default function ProductUpdateForm() {
                             />
                             <p className="text-xs text-gray-500 mt-1">
                               Format yang didukung: JPEG, JPG, PNG, GIF, WEBP.
-                              Maksimal 3MB per file. Bisa upload multiple
-                              gambar. Kosongkan jika tidak ingin mengubah
+                              Maksimal 3MB per file. Bisa pilih multiple gambar.
+                              Gambar akan diupload ke Cloudinary saat produk
+                              disimpan. Kosongkan jika tidak ingin mengubah
                               gambar.
                             </p>
                           </div>
@@ -1094,7 +1154,8 @@ export default function ProductUpdateForm() {
                             <div className="mt-4">
                               <div className="flex items-center justify-between mb-3">
                                 <h3 className="text-sm font-medium text-gray-700">
-                                  Preview Gambar Baru ({imagePreviews.length})
+                                  Preview Gambar Baru Terpilih (
+                                  {imagePreviews.length})
                                 </h3>
                                 <Button
                                   type="button"

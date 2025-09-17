@@ -48,6 +48,11 @@ interface ProductFormData {
   genders: string[];
   skuData: SkuData[];
   subCategories: string[];
+  images?: Array<{
+    imageUrl: string;
+    altText: string;
+    order: number;
+  }>;
 }
 
 export function ProductManagement() {
@@ -155,6 +160,38 @@ export function ProductManagement() {
     }));
   };
 
+  const uploadToCloudinary = async (file: File): Promise<string> => {
+    try {
+      // Convert file to base64
+      const toBase64 = (file: File): Promise<string> =>
+        new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = (error) => reject(error);
+        });
+
+      const base64 = await toBase64(file);
+
+      const response = await fetch("/api/cloudinary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ file: base64 }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Upload failed");
+      }
+
+      const data = await response.json();
+      return data.url;
+    } catch (error) {
+      console.error("Cloudinary upload error:", error);
+      throw new Error("Failed to upload image to Cloudinary");
+    }
+  };
+
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
@@ -197,8 +234,10 @@ export function ProductManagement() {
       }
 
       if (newFiles.length > 0) {
+        // Just store the files and previews, don't upload yet
         setSelectedImages((prev) => [...prev, ...newFiles]);
         setImagePreviews((prev) => [...prev, ...newPreviews]);
+
         // Initialize order array starting from current length
         const currentLength = selectedImages.length;
         const newOrder = Array.from(
@@ -206,6 +245,11 @@ export function ProductManagement() {
           (_, i) => currentLength + i
         );
         setImageOrder((prev) => [...prev, ...newOrder]);
+
+        toast({
+          title: "Success",
+          description: `${newFiles.length} gambar berhasil dipilih. Gambar akan diupload saat produk disimpan.`,
+        });
       }
     }
   };
@@ -324,108 +368,124 @@ export function ProductManagement() {
       // Import API client
       const { api } = await import("../../lib/api");
 
-      let data;
+      // Validate and clean form data before sending
+      const cleanedFormData = {
+        ...formData,
+        catalogId: formData.catalogId.trim(),
+        brand: formData.brand.trim(),
+        category: formData.category.trim(),
+        name: formData.name.trim(),
+        slug: formData.slug.trim(),
+        cloudProductId: formData.cloudProductId.trim(),
+        color: formData.color.trim(),
+        country: formData.country.trim(),
+        prodigyId: formData.prodigyId.trim(),
+        imageUrl: formData.imageUrl.trim(),
+        // Ensure prices are valid numbers
+        currentPrice: Math.max(0, formData.currentPrice),
+        fullPrice: Math.max(0, formData.fullPrice),
+      };
 
-      if (selectedImages.length > 0) {
-        // Create FormData for multiple images upload
-        const formDataWithImages = new FormData();
-
-        // Add all image files
-        selectedImages.forEach((image) => {
-          formDataWithImages.append("images", image);
-        });
-
-        // Validate and clean form data before sending
-        const cleanedFormData = {
-          ...formData,
-          catalogId: formData.catalogId.trim(),
-          brand: formData.brand.trim(),
-          category: formData.category.trim(),
-          name: formData.name.trim(),
-          slug: formData.slug.trim(),
-          cloudProductId: formData.cloudProductId.trim(),
-          color: formData.color.trim(),
-          country: formData.country.trim(),
-          prodigyId: formData.prodigyId.trim(),
-          imageUrl: formData.imageUrl.trim(),
-          // Ensure prices are valid numbers
-          currentPrice: Math.max(0, formData.currentPrice),
-          fullPrice: Math.max(0, formData.fullPrice),
-        };
-
-        // Validate required fields
-        if (
-          !cleanedFormData.catalogId ||
-          !cleanedFormData.brand ||
-          !cleanedFormData.category ||
-          !cleanedFormData.name
-        ) {
-          toast({
-            title: "Error",
-            description:
-              "Please fill in all required fields (Catalog ID, Brand, Category, Name)",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        // Add all form data as JSON string
-        console.log("Form data being sent:", cleanedFormData);
-        const jsonData = JSON.stringify(cleanedFormData);
-        console.log("JSON string:", jsonData);
-        formDataWithImages.append("data", jsonData);
-
-        data = await api.products.createWithImage(formDataWithImages);
-      } else {
-        // Show error if no image is selected
+      // Validate required fields
+      if (
+        !cleanedFormData.catalogId ||
+        !cleanedFormData.brand ||
+        !cleanedFormData.category ||
+        !cleanedFormData.name
+      ) {
         toast({
           title: "Error",
-          description: "Minimal satu gambar produk wajib diupload",
+          description:
+            "Please fill in all required fields (Catalog ID, Brand, Category, Name)",
           variant: "destructive",
         });
         return;
       }
 
-      toast({
-        title: "Success",
-        description: "Produk berhasil ditambahkan",
-      });
-
-      // Reset form
-      setFormData({
-        isOnSale: false,
-        isNikeByYou: false,
-        catalogId: "",
-        brand: "",
-        category: "",
-        cloudProductId: "",
-        color: "",
-        country: "",
-        currentPrice: 0,
-        fullPrice: 0,
-        name: "",
-        slug: "",
-        prodigyId: "",
-        imageUrl: "",
-        genders: [],
-        skuData: [],
-        subCategories: [],
-      });
-
-      // Reset images
-      setSelectedImages([]);
-      setImagePreviews([]);
-      setImageOrder([]);
-      const fileInput = document.getElementById(
-        "image-upload"
-      ) as HTMLInputElement;
-      if (fileInput) {
-        fileInput.value = "";
+      // Check if images are selected
+      if (!selectedImages || selectedImages.length === 0) {
+        toast({
+          title: "Error",
+          description: "Minimal satu gambar produk wajib dipilih",
+          variant: "destructive",
+        });
+        return;
       }
 
-      // Reset price display values
-      setCurrentPriceDisplay("");
-      setFullPriceDisplay("");
+      // Upload images to Cloudinary
+      setLoading(true);
+      const imageUrls: string[] = [];
+      try {
+        for (const file of selectedImages) {
+          const imageUrl = await uploadToCloudinary(file);
+          imageUrls.push(imageUrl);
+        }
+
+        // Prepare form data with uploaded image URLs
+        const formDataWithImages = {
+          ...cleanedFormData,
+          images: imageUrls.map((url, index) => ({
+            imageUrl: url,
+            altText: `${cleanedFormData.name || "Product"} - Image ${
+              index + 1
+            }`,
+            order: index,
+          })),
+        };
+
+        console.log("Form data being sent:", formDataWithImages);
+        const data = await api.products.createWithImage(formDataWithImages);
+
+        toast({
+          title: "Success",
+          description: "Produk berhasil ditambahkan",
+        });
+
+        // Reset form
+        setFormData({
+          isOnSale: false,
+          isNikeByYou: false,
+          catalogId: "",
+          brand: "",
+          category: "",
+          cloudProductId: "",
+          color: "",
+          country: "",
+          currentPrice: 0,
+          fullPrice: 0,
+          name: "",
+          slug: "",
+          prodigyId: "",
+          imageUrl: "",
+          genders: [],
+          skuData: [],
+          subCategories: [],
+        });
+
+        // Reset images
+        setSelectedImages([]);
+        setImagePreviews([]);
+        setImageOrder([]);
+        const fileInput = document.getElementById(
+          "image-upload"
+        ) as HTMLInputElement;
+        if (fileInput) {
+          fileInput.value = "";
+        }
+
+        // Reset price display values
+        setCurrentPriceDisplay("");
+        setFullPriceDisplay("");
+      } catch (uploadError: any) {
+        console.error("Image upload error:", uploadError);
+        toast({
+          title: "Error",
+          description:
+            uploadError.message || "Gagal upload gambar ke Cloudinary",
+          variant: "destructive",
+        });
+        return;
+      }
     } catch (error: any) {
       console.error("Product creation error:", error);
       toast({
@@ -783,7 +843,7 @@ export function ProductManagement() {
                       {/* Multiple Images Upload */}
                       <div className="bg-white p-6 rounded-lg shadow">
                         <h2 className="text-lg font-semibold mb-4">
-                          Upload Gambar Produk *
+                          Pilih Gambar Produk *
                         </h2>
                         <div className="space-y-4">
                           <div>
@@ -801,8 +861,9 @@ export function ProductManagement() {
                             />
                             <p className="text-xs text-gray-500 mt-1">
                               Format yang didukung: JPEG, JPG, PNG, GIF, WEBP.
-                              Maksimal 3MB per file. Bisa upload multiple
-                              gambar.
+                              Maksimal 3MB per file. Bisa pilih multiple gambar.
+                              Gambar akan diupload ke Cloudinary saat produk
+                              disimpan.
                             </p>
                           </div>
 
@@ -811,7 +872,8 @@ export function ProductManagement() {
                             <div className="mt-4">
                               <div className="flex items-center justify-between mb-3">
                                 <h3 className="text-sm font-medium text-gray-700">
-                                  Preview Gambar ({imagePreviews.length})
+                                  Preview Gambar Terpilih (
+                                  {imagePreviews.length})
                                 </h3>
                                 <Button
                                   type="button"
@@ -1080,11 +1142,11 @@ export function ProductManagement() {
                         </h3>
                         <div className="text-xs text-gray-600 space-y-1">
                           <div>
-                            • Minimal satu gambar wajib diupload untuk setiap
+                            • Minimal satu gambar wajib dipilih untuk setiap
                             produk
                           </div>
                           <div>
-                            • Bisa upload multiple gambar (maksimal 10 gambar)
+                            • Bisa pilih multiple gambar (maksimal 10 gambar)
                           </div>
                           <div>
                             • Gunakan tombol ↑↓ untuk mengatur urutan gambar
@@ -1093,8 +1155,8 @@ export function ProductManagement() {
                             • Gambar akan ditampilkan di preview saat dipilih
                           </div>
                           <div>
-                            • Upload gambar akan disimpan ke folder assets (max
-                            3MB per file)
+                            • Gambar akan diupload ke Cloudinary saat produk
+                            disimpan (max 3MB per file)
                           </div>
                           <div>
                             • Preview ini menunjukkan tampilan di halaman produk

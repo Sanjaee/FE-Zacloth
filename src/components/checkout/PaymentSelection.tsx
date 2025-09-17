@@ -33,6 +33,28 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("gopay");
 
+  // Helper function to get the correct image URL
+  const getImageUrl = (imageUrl: string) => {
+    if (!imageUrl) {
+      return "/placeholder-image.svg"; // Fallback image
+    }
+
+    // If it's already a full URL, return as is
+    if (imageUrl.startsWith("http")) {
+      return imageUrl;
+    }
+
+    // If it's a local asset path, prepend the backend URL
+    if (imageUrl.startsWith("/assets/")) {
+      const backendUrl =
+        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+      return `${backendUrl}${imageUrl}`;
+    }
+
+    // Default fallback
+    return imageUrl;
+  };
+
   // Calculate costs with robust fallbacks
   const productPrice =
     productData.currentPrice || productData.price || productData.fullPrice || 0;
@@ -144,16 +166,21 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
         {/* Product Info */}
         <div className="flex items-center space-x-3">
           <img
-            src={productData.imageUrl}
+            src={getImageUrl(productData.imageUrl)}
             alt={productData.name}
             className="w-16 h-16 object-cover rounded-lg"
+            onError={(e) => {
+              // Fallback to placeholder if image fails to load
+              const target = e.target as HTMLImageElement;
+              target.src = "/placeholder-image.svg";
+            }}
           />
           <div>
             <h3 className="font-semibold">{productData.name}</h3>
             <p className="text-sm text-gray-600">Product Price</p>
           </div>
           <div className="ml-auto">
-            <p className="font-semibold">
+            <p className="font-semibold text-nowrap">
               {formatRupiahWithSymbol(productPrice)}
             </p>
           </div>

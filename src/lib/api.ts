@@ -192,12 +192,12 @@ export const api = {
     getById: (id: string) => apiClient.get(`/products/${id}`),
     getBySlug: (slug: string) => apiClient.get(`/products/slug/${slug}`),
     create: (productData: any) => apiClient.post("/products", productData),
-    createWithImage: (formData: FormData) =>
-      apiClient.postFormData("/products/with-image", formData),
+    createWithImage: (productData: any) =>
+      apiClient.post("/products/with-image", productData),
     update: (id: string, productData: any) =>
       apiClient.put(`/products/${id}`, productData),
-    updateWithImage: (id: string, formData: FormData) =>
-      apiClient.putFormData(`/products/${id}/with-image`, formData),
+    updateWithImage: (id: string, productData: any) =>
+      apiClient.put(`/products/${id}/with-image`, productData),
     delete: (id: string) => apiClient.delete(`/products/${id}`),
   },
 
