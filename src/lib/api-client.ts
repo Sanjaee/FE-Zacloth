@@ -162,6 +162,10 @@ export const api = {
     getAddresses: () => apiClient.get("/users/addresses"),
     createAddress: (addressData: any) =>
       apiClient.post("/users/addresses", addressData),
+    updateAddress: (addressId: string, addressData: any) =>
+      apiClient.put(`/users/addresses/${addressId}`, addressData),
+    deleteAddress: (addressId: string) =>
+      apiClient.delete(`/users/addresses/${addressId}`),
   },
 
   // Visitor endpoints

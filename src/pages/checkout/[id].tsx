@@ -107,6 +107,11 @@ const CheckoutPage: React.FC = () => {
     }
   };
 
+  const handleAddressesUpdate = (updatedAddresses: any[]) => {
+    setUserAddresses(updatedAddresses);
+    setHasAddresses(updatedAddresses.length > 0);
+  };
+
   const handleShippingCalculate = (data: any) => {
     setShippingData(data);
   };
@@ -157,6 +162,7 @@ const CheckoutPage: React.FC = () => {
                 existingAddresses={userAddresses}
                 selectedAddress={addressData}
                 onAddressSelect={setAddressData}
+                onAddressesUpdate={handleAddressesUpdate}
               />
             )}
           </div>

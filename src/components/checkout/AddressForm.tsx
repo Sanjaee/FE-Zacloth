@@ -8,6 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { SelectDialog } from "@/components/ui/select-dialog";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/router";
+import { api } from "@/lib/api-client";
+import { Trash2, Edit, Plus } from "lucide-react";
 
 interface AddressFormProps {
   onAddressSubmit: (addressData: any) => void;
@@ -16,6 +18,7 @@ interface AddressFormProps {
   existingAddresses?: any[];
   selectedAddress?: any;
   onAddressSelect?: (address: any) => void;
+  onAddressesUpdate?: (addresses: any[]) => void;
 }
 
 export const AddressForm: React.FC<AddressFormProps> = ({
@@ -25,6 +28,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
   existingAddresses = [],
   selectedAddress,
   onAddressSelect,
+  onAddressesUpdate,
 }) => {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -51,6 +55,8 @@ export const AddressForm: React.FC<AddressFormProps> = ({
     postalCode: "",
     addressDetail: "",
     isPrimary: true,
+    subdistrictId: "",
+    subdistrictName: "",
   });
 
   // Sources from API
@@ -69,6 +75,8 @@ export const AddressForm: React.FC<AddressFormProps> = ({
   // Toggle compact layout when address is saved
   const [isAddressSaved, setIsAddressSaved] = useState(hasExistingAddresses);
   const [showAddressForm, setShowAddressForm] = useState(!hasExistingAddresses);
+  const [editingAddress, setEditingAddress] = useState<any>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   // Set destination when selectedAddress changes (for existing addresses)
   useEffect(() => {
@@ -271,12 +279,18 @@ export const AddressForm: React.FC<AddressFormProps> = ({
       return;
     }
 
-    onAddressSubmit(formData);
-    setIsAddressSaved(true);
-    toast({
-      title: "Success",
-      description: "Address saved successfully",
-    });
+    if (isEditing && editingAddress) {
+      // Update existing address
+      handleUpdateAddress(formData);
+    } else {
+      // Create new address
+      onAddressSubmit(formData);
+      setIsAddressSaved(true);
+      toast({
+        title: "Success",
+        description: "Address saved successfully",
+      });
+    }
   };
 
   const handleChangeAddress = () => {
@@ -307,6 +321,116 @@ export const AddressForm: React.FC<AddressFormProps> = ({
     }
   };
 
+  // Delete address function
+  const handleDeleteAddress = async (addressId: string) => {
+    try {
+      const response = (await api.users.deleteAddress(addressId)) as any;
+      if (response.success) {
+        toast({
+          title: "Success",
+          description: "Address deleted successfully",
+        });
+
+        // Update addresses list
+        const updatedAddresses = existingAddresses.filter(
+          (addr) => addr.id !== parseInt(addressId)
+        );
+        if (onAddressesUpdate) {
+          onAddressesUpdate(updatedAddresses);
+        }
+
+        // If deleted address was selected, clear selection
+        if (selectedAddress?.id === parseInt(addressId)) {
+          if (onAddressSelect) {
+            onAddressSelect(null);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error deleting address:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete address",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Update address function
+  const handleUpdateAddress = async (addressData: any) => {
+    if (!editingAddress) return;
+
+    try {
+      const response = (await api.users.updateAddress(
+        editingAddress.id.toString(),
+        addressData
+      )) as any;
+      if (response.success) {
+        toast({
+          title: "Success",
+          description: "Address updated successfully",
+        });
+
+        // Update addresses list
+        const updatedAddresses = existingAddresses.map((addr) =>
+          addr.id === editingAddress.id ? response.address : addr
+        );
+        if (onAddressesUpdate) {
+          onAddressesUpdate(updatedAddresses);
+        }
+
+        // Update selected address if it was the one being edited
+        if (selectedAddress?.id === editingAddress.id) {
+          if (onAddressSelect) {
+            onAddressSelect(response.address);
+          }
+        }
+
+        // Reset editing state
+        setEditingAddress(null);
+        setIsEditing(false);
+        setShowAddressForm(false);
+      }
+    } catch (error) {
+      console.error("Error updating address:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update address",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Start editing address
+  const handleEditAddress = (address: any) => {
+    setEditingAddress(address);
+    setIsEditing(true);
+    setShowAddressForm(true);
+
+    // Pre-fill form with address data
+    setFormData({
+      recipientName: address.recipientName,
+      phoneNumber: address.phoneNumber,
+      provinceId: address.provinceId.toString(),
+      provinceName: address.provinceName,
+      cityId: address.cityId.toString(),
+      cityName: address.cityName,
+      postalCode: address.postalCode || "",
+      addressDetail: address.addressDetail,
+      isPrimary: address.isPrimary,
+      subdistrictId: address.subdistrictId?.toString() || "",
+      subdistrictName: address.subdistrictName || "",
+    });
+
+    // Load cities and districts for the address
+    if (address.provinceId) {
+      fetchCities(address.provinceId.toString());
+    }
+    if (address.cityId) {
+      fetchDistricts(address.cityId.toString());
+    }
+  };
+
   const AddressSummary = () => {
     const displayAddress = selectedAddress || formData;
 
@@ -320,6 +444,11 @@ export const AddressForm: React.FC<AddressFormProps> = ({
             <div className="text-sm text-gray-700 space-y-1">
               <div className="font-medium">
                 {displayAddress.recipientName} • {displayAddress.phoneNumber}
+                {displayAddress.isPrimary && (
+                  <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                    Primary
+                  </span>
+                )}
               </div>
               <div>
                 {displayAddress.addressDetail}
@@ -335,9 +464,31 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                   : ""}
               </div>
             </div>
-            <Button variant="outline" onClick={handleChangeAddress}>
-              Change
-            </Button>
+            <div className="flex gap-2">
+              {selectedAddress && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEditAddress(selectedAddress)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      handleDeleteAddress(selectedAddress.id.toString())
+                    }
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </>
+              )}
+              <Button variant="outline" onClick={handleChangeAddress}>
+                Change
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -353,39 +504,75 @@ export const AddressForm: React.FC<AddressFormProps> = ({
         {existingAddresses.map((address) => (
           <div
             key={address.id}
-            className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+            className={`p-3 border rounded-lg transition-colors ${
               selectedAddress?.id === address.id
                 ? "border-blue-500 bg-blue-50"
                 : "border-gray-200 hover:border-gray-300"
             }`}
-            onClick={() => handleSelectExistingAddress(address)}
           >
-            <div className="text-sm">
-              <div className="font-medium">
-                {address.recipientName} • {address.phoneNumber}
-                {address.isPrimary && (
-                  <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                    Primary
-                  </span>
-                )}
+            <div
+              className="cursor-pointer"
+              onClick={() => handleSelectExistingAddress(address)}
+            >
+              <div className="text-sm">
+                <div className="font-medium">
+                  {address.recipientName} • {address.phoneNumber}
+                  {address.isPrimary && (
+                    <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                      Primary
+                    </span>
+                  )}
+                </div>
+                <div className="text-gray-600 mt-1">
+                  {address.addressDetail}
+                  {address.subdistrictName
+                    ? `, ${address.subdistrictName}`
+                    : ""}
+                  {address.cityName ? `, ${address.cityName}` : ""}
+                  {address.provinceName ? `, ${address.provinceName}` : ""}
+                  {address.postalCode ? `, ${address.postalCode}` : ""}
+                </div>
               </div>
-              <div className="text-gray-600 mt-1">
-                {address.addressDetail}
-                {address.subdistrictName ? `, ${address.subdistrictName}` : ""}
-                {address.cityName ? `, ${address.cityName}` : ""}
-                {address.provinceName ? `, ${address.provinceName}` : ""}
-                {address.postalCode ? `, ${address.postalCode}` : ""}
-              </div>
+            </div>
+            <div className="flex gap-2 mt-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleEditAddress(address)}
+              >
+                <Edit className="w-4 h-4 mr-1" />
+                Edit
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleDeleteAddress(address.id.toString())}
+              >
+                <Trash2 className="w-4 h-4 mr-1" />
+                Delete
+              </Button>
             </div>
           </div>
         ))}
-        <Button
-          variant="outline"
-          className="w-full"
-          onClick={() => setShowAddressForm(true)}
-        >
-          Add New Address
-        </Button>
+        {existingAddresses.length < 2 && (
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => {
+              setEditingAddress(null);
+              setIsEditing(false);
+              setShowAddressForm(true);
+            }}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add New Address
+          </Button>
+        )}
+        {existingAddresses.length >= 2 && (
+          <div className="text-sm text-gray-500 text-center py-2">
+            Maximum of 2 addresses allowed
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -404,7 +591,9 @@ export const AddressForm: React.FC<AddressFormProps> = ({
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Shipping Address</CardTitle>
+            <CardTitle>
+              {isEditing ? "Edit Shipping Address" : "Shipping Address"}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -543,9 +732,23 @@ export const AddressForm: React.FC<AddressFormProps> = ({
               />
             </div>
 
-            <Button onClick={handleSubmitAddress} className="w-full">
-              Save Address
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={handleSubmitAddress} className="flex-1">
+                {isEditing ? "Update Address" : "Save Address"}
+              </Button>
+              {isEditing && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setEditingAddress(null);
+                    setIsEditing(false);
+                    setShowAddressForm(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
