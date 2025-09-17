@@ -8,7 +8,6 @@ import { ArrowLeft, Copy, CheckCircle, Clock, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatRupiahWithSymbol } from "@/utils/currencyFormatter";
 import { api } from "@/lib/api-client";
-import { PaymentStatus } from "@/components/payment/PaymentStatus";
 import { VirtualAccountDisplay } from "@/components/payment/VirtualAccountDisplay";
 import { QRCodeDisplay } from "@/components/payment/QRCodeDisplay";
 
@@ -140,8 +139,6 @@ const PaymentPage: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Side - Payment Information */}
           <div className="space-y-6">
-            {/* Payment Status */}
-            <PaymentStatus paymentData={paymentData} />
 
             {/* Payment Method Display */}
             {paymentData.paymentMethod === "bank_transfer" && (
@@ -151,7 +148,8 @@ const PaymentPage: React.FC = () => {
               />
             )}
 
-            {paymentData.paymentMethod === "gopay" && (
+            {(paymentData.paymentMethod === "gopay" ||
+              paymentData.paymentMethod === "qris") && (
               <QRCodeDisplay paymentData={paymentData} onCopy={handleCopy} />
             )}
 

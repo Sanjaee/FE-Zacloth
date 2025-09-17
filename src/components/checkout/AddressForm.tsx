@@ -208,17 +208,22 @@ export const AddressForm: React.FC<AddressFormProps> = ({
 
       if (result && Array.isArray(result)) {
         // Find the cost for the selected service
+        // The API might return different service names, so we'll take the first result for the courier
         const selectedService = result.find(
           (item: any) => item.code === shippingData.courier
         );
-        const serviceCost = selectedService?.costs?.find(
-          (cost: any) => cost.service === shippingData.service
-        );
+
+        console.log("Shipping calculation result:", {
+          result,
+          shippingData,
+          selectedService,
+        });
 
         onShippingCalculate({
           ...shippingData,
-          cost: serviceCost?.cost || 0,
-          etd: serviceCost?.etd || "2-3 hari",
+          cost: selectedService?.cost || 0,
+          etd: selectedService?.etd || "2-3 hari",
+          service: selectedService?.service || shippingData.service, // Use the actual service name from API
         });
         toast({
           title: "Success",

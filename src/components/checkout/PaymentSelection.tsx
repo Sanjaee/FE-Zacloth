@@ -10,7 +10,7 @@ import { formatRupiahWithSymbol } from "@/utils/currencyFormatter";
 import { useRouter } from "next/router";
 import { api } from "@/lib/api-client";
 
-interface PaymentSimulationProps {
+interface PaymentSelectionProps {
   productData: {
     id: string;
     name: string;
@@ -23,7 +23,7 @@ interface PaymentSimulationProps {
   shippingData: any;
 }
 
-export const PaymentSimulation: React.FC<PaymentSimulationProps> = ({
+export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
   productData,
   addressData,
   shippingData,
@@ -31,16 +31,14 @@ export const PaymentSimulation: React.FC<PaymentSimulationProps> = ({
   const { toast } = useToast();
   const router = useRouter();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
-  const [selectedBank, setSelectedBank] = useState("bca");
+  const [paymentMethod, setPaymentMethod] = useState("gopay");
 
   // Calculate costs with robust fallbacks
   const productPrice =
     productData.currentPrice || productData.price || productData.fullPrice || 0;
   const shippingCost = shippingData?.cost || 0;
-  const adminFee = productPrice > 0 ? Math.round(productPrice * 0.05) : 0; // 5% admin fee
+  const adminFee = 1000; // Fixed admin fee of 1000
   const totalAmount = productPrice + shippingCost + adminFee;
-
   const handlePayment = async () => {
     if (!addressData || !shippingData) {
       toast({
@@ -81,6 +79,19 @@ export const PaymentSimulation: React.FC<PaymentSimulationProps> = ({
 
     setIsProcessing(true);
     try {
+      // Determine payment method and bank
+      let finalPaymentMethod = "bank_transfer";
+      let bank = "bca";
+
+      if (["mandiri", "bca", "bri", "bni"].includes(paymentMethod)) {
+        finalPaymentMethod = "bank_transfer";
+        bank = paymentMethod;
+      } else if (paymentMethod === "gopay") {
+        finalPaymentMethod = "gopay";
+      } else if (paymentMethod === "credit_card") {
+        finalPaymentMethod = "credit_card";
+      }
+
       const paymentData = {
         productId: productData.id,
         addressId: addressData.id,
@@ -93,8 +104,8 @@ export const PaymentSimulation: React.FC<PaymentSimulationProps> = ({
         shippingCost: shippingCost,
         adminFee: adminFee,
         totalAmount: totalAmount,
-        paymentMethod: paymentMethod,
-        bank: paymentMethod === "bank_transfer" ? selectedBank : undefined,
+        paymentMethod: finalPaymentMethod,
+        bank: finalPaymentMethod === "bank_transfer" ? bank : undefined,
       };
 
       const response = (await api.payments.createProductPayment(
@@ -187,62 +198,84 @@ export const PaymentSimulation: React.FC<PaymentSimulationProps> = ({
 
         {/* Payment Method Selection */}
         <div>
-          <h4 className="font-semibold mb-3">Payment Method</h4>
+          <h4 className="font-semibold mb-3">Metode Pembayaran</h4>
           <RadioGroup
             value={paymentMethod}
             onValueChange={setPaymentMethod}
-            className="space-y-3"
+            className="space-y-0"
           >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="bank_transfer" id="bank_transfer" />
-              <Label htmlFor="bank_transfer">Bank Transfer</Label>
-            </div>
-            <div className="flex items-center space-x-2">
+            {/* QRIS Payment Method - Top */}
+            <div
+              className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+              onClick={() => setPaymentMethod("gopay")}
+            >
               <RadioGroupItem value="gopay" id="gopay" />
-              <Label htmlFor="gopay">GoPay / QRIS</Label>
+              <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
+                {/* Placeholder for QRIS logo */}
+                <span className="text-xs font-bold text-gray-600">QR</span>
+              </div>
+              <Label htmlFor="gopay" className="flex-1 cursor-pointer">
+                QRIS
+              </Label>
             </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="credit_card" id="credit_card" />
-              <Label htmlFor="credit_card">Credit Card</Label>
+
+            {/* Bank Transfer Options */}
+            <div
+              className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+              onClick={() => setPaymentMethod("mandiri")}
+            >
+              <RadioGroupItem value="mandiri" id="mandiri" />
+              <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
+                {/* Placeholder for Mandiri logo */}
+                <span className="text-xs font-bold text-gray-600">M</span>
+              </div>
+              <Label htmlFor="mandiri" className="flex-1 cursor-pointer">
+                Mandiri Virtual Account
+              </Label>
+            </div>
+
+            <div
+              className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+              onClick={() => setPaymentMethod("bca")}
+            >
+              <RadioGroupItem value="bca" id="bca" />
+              <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
+                {/* Placeholder for BCA logo */}
+                <span className="text-xs font-bold text-gray-600">BCA</span>
+              </div>
+              <Label htmlFor="bca" className="flex-1 cursor-pointer">
+                BCA Virtual Account
+              </Label>
+            </div>
+
+            <div
+              className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+              onClick={() => setPaymentMethod("bri")}
+            >
+              <RadioGroupItem value="bri" id="bri" />
+              <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
+                {/* Placeholder for BRI logo */}
+                <span className="text-xs font-bold text-gray-600">BRI</span>
+              </div>
+              <Label htmlFor="bri" className="flex-1 cursor-pointer">
+                BRI Virtual Account
+              </Label>
+            </div>
+
+            <div
+              className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+              onClick={() => setPaymentMethod("bni")}
+            >
+              <RadioGroupItem value="bni" id="bni" />
+              <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
+                {/* Placeholder for BNI logo */}
+                <span className="text-xs font-bold text-gray-600">BNI</span>
+              </div>
+              <Label htmlFor="bni" className="flex-1 cursor-pointer">
+                BNI Virtual Account
+              </Label>
             </div>
           </RadioGroup>
-
-          {/* Bank Selection for Bank Transfer */}
-          {paymentMethod === "bank_transfer" && (
-            <div className="mt-3 ml-6">
-              <Label className="text-sm font-medium">Select Bank:</Label>
-              <RadioGroup
-                value={selectedBank}
-                onValueChange={setSelectedBank}
-                className="mt-2 space-y-2"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="bca" id="bca" />
-                  <Label htmlFor="bca" className="text-sm">
-                    BCA
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="bni" id="bni" />
-                  <Label htmlFor="bni" className="text-sm">
-                    BNI
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="bri" id="bri" />
-                  <Label htmlFor="bri" className="text-sm">
-                    BRI
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="mandiri" id="mandiri" />
-                  <Label htmlFor="mandiri" className="text-sm">
-                    Mandiri
-                  </Label>
-                </div>
-              </RadioGroup>
-            </div>
-          )}
         </div>
 
         <Separator />
@@ -258,7 +291,7 @@ export const PaymentSimulation: React.FC<PaymentSimulationProps> = ({
             <span>{formatRupiahWithSymbol(shippingCost)}</span>
           </div>
           <div className="flex justify-between">
-            <span>Admin Fee (5%)</span>
+            <span>Admin Fee</span>
             <span>{formatRupiahWithSymbol(adminFee)}</span>
           </div>
           <Separator />

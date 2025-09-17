@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { AddressForm } from "@/components/checkout/AddressForm";
-import { PaymentSimulation } from "@/components/checkout/PaymentSimulation";
+import { PaymentSelection } from "@/components/checkout/PaymentSelection";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -163,7 +163,7 @@ const CheckoutPage: React.FC = () => {
 
           {/* Right Side - Payment Simulation (Smaller) */}
           <div className="lg:col-span-1">
-            <PaymentSimulation
+            <PaymentSelection
               productData={productData}
               addressData={addressData}
               shippingData={shippingData}

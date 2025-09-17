@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,18 +14,80 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
   paymentData,
   onCopy,
 }) => {
-  const getQRCodeUrl = () => {
-    // Extract QR code URL from Midtrans response
-    if (paymentData.midtransResponse?.actions) {
-      const qrAction = paymentData.midtransResponse.actions.find(
-        (action: any) => action.name === "generate-qr-code"
-      );
-      return qrAction?.url;
-    }
-    return null;
-  };
+  const [countdown, setCountdown] = useState<string>("");
+  const [copied, setCopied] = useState(false);
 
-  const qrCodeUrl = getQRCodeUrl();
+  // Parse midtrans response
+  const midtransResponse = paymentData?.midtransResponse
+    ? (() => {
+        try {
+          return typeof paymentData.midtransResponse === "string"
+            ? JSON.parse(paymentData.midtransResponse)
+            : paymentData.midtransResponse;
+        } catch {
+          return null;
+        }
+      })()
+    : null;
+
+  // Get QR code URL from actions
+  let qrCodeUrl: string | null = null;
+  if (midtransResponse && Array.isArray(midtransResponse.actions)) {
+    const qrAction = midtransResponse.actions.find(
+      (a: any) =>
+        a.name === "generate-qr-code" || a.name === "generate-qr-code-v2"
+    );
+    qrCodeUrl = qrAction?.url || null;
+  }
+
+  // Get QR code from midtransAction as fallback
+  let qrImgFromAction: string | null = null;
+  if (paymentData?.midtransAction) {
+    try {
+      const actionsArr =
+        typeof paymentData.midtransAction === "string"
+          ? JSON.parse(paymentData.midtransAction)
+          : paymentData.midtransAction;
+      if (Array.isArray(actionsArr)) {
+        const qrAction = actionsArr.find(
+          (a: any) =>
+            a.name === "generate-qr-code" || a.name === "generate-qr-code-v2"
+        );
+        qrImgFromAction = qrAction?.url || null;
+      }
+    } catch {}
+  }
+
+  // Use the first available QR code URL
+  const finalQrCodeUrl = qrCodeUrl || qrImgFromAction;
+
+  // Countdown timer for expiry_time
+  useEffect(() => {
+    if (!midtransResponse?.expiry_time) {
+      setCountdown("");
+      return;
+    }
+    const expiry = new Date(midtransResponse.expiry_time).getTime();
+    const updateCountdown = () => {
+      const now = Date.now();
+      const diff = expiry - now;
+      if (diff <= 0) {
+        setCountdown("Expired");
+        return;
+      }
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      setCountdown(
+        `${hours.toString().padStart(2, "0")}:${minutes
+          .toString()
+          .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+      );
+    };
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [midtransResponse?.expiry_time]);
 
   return (
     <Card>
@@ -37,15 +99,30 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
       </CardHeader>
       <CardContent className="space-y-4">
         {/* QR Code */}
-        {qrCodeUrl ? (
+        {finalQrCodeUrl ? (
           <div className="text-center">
-            <div className="inline-block p-4 bg-white border-2 border-gray-200 rounded-lg">
-              <img
-                src={qrCodeUrl}
-                alt="QR Code for Payment"
-                className="w-48 h-48 mx-auto"
-              />
-            </div>
+            <a
+              href={finalQrCodeUrl}
+              download="qrcode.png"
+              onClick={(e) => {
+                if (!finalQrCodeUrl.startsWith("data:")) {
+                  setTimeout(() => window.open(finalQrCodeUrl, "_blank"), 100);
+                }
+              }}
+              className="block w-fit mx-auto"
+              title="Download QR"
+            >
+              <div className="inline-block bg-white border-2 border-gray-200 rounded-lg">
+                <img
+                  src={finalQrCodeUrl}
+                  alt="QR Code for Payment"
+                  className="w-48 h-48 mx-auto cursor-pointer hover:opacity-80 transition"
+                />
+              </div>
+              <div className="text-xs text-center text-gray-400 mt-1">
+                Click image to download
+              </div>
+            </a>
             <p className="text-sm text-gray-600 mt-2">
               Scan this QR code with your mobile banking app
             </p>
@@ -57,102 +134,24 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
           </div>
         )}
 
-        {/* Payment Amount */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700">
-            Payment Amount
-          </label>
-          <div className="p-3 bg-white border rounded-lg">
-            <p className="text-2xl font-bold text-green-600">
-              {formatRupiahWithSymbol(paymentData.totalAmount)}
-            </p>
-          </div>
-        </div>
-
-        {/* Payment Code (if available) */}
-        {paymentData.paymentCode && (
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">
-              Payment Code
-            </label>
-            <div className="flex items-center space-x-2 p-3 bg-white border rounded-lg">
-              <span className="font-mono text-lg font-semibold flex-1">
-                {paymentData.paymentCode}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onCopy(paymentData.paymentCode, "Payment Code")}
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Instructions */}
-        <div className="bg-green-50 p-4 rounded-lg">
-          <h4 className="font-semibold text-green-900 mb-2 flex items-center space-x-2">
-            <Smartphone className="h-4 w-4" />
-            <span>Payment Instructions:</span>
-          </h4>
-          <ol className="text-sm text-green-800 space-y-1 list-decimal list-inside">
-            <li>Open your mobile banking app (GoPay, OVO, DANA, etc.)</li>
-            <li>Select "Scan QR" or "QRIS"</li>
-            <li>Scan the QR code above</li>
-            <li>Verify the payment amount</li>
-            <li>Enter your PIN or use biometric authentication</li>
-            <li>Complete the transaction</li>
-            <li>Your payment will be processed automatically</li>
-          </ol>
-        </div>
-
-        {/* Alternative Instructions */}
-        <div className="bg-blue-50 p-4 rounded-lg">
-          <h4 className="font-semibold text-blue-900 mb-2">
-            Alternative Method:
-          </h4>
-          <p className="text-sm text-blue-800">
-            If you can't scan the QR code, you can also pay using the payment
-            code above in your mobile banking app's "Pay Bills" or "Payment"
-            section.
-          </p>
-        </div>
-
         {/* Expiry Warning */}
-        {paymentData.expiryTime && (
+        {midtransResponse?.expiry_time && (
           <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
             <div className="flex items-center space-x-2">
               <Clock className="h-4 w-4 text-yellow-600" />
               <span className="text-sm text-yellow-800">
-                <strong>Expires:</strong>{" "}
-                {new Date(paymentData.expiryTime).toLocaleString()}
+                <strong>Valid until:</strong> {midtransResponse.expiry_time}
+                {countdown && (
+                  <div className="text-xs text-red-400 mt-1 font-mono">
+                    Time remaining: {countdown}
+                  </div>
+                )}
               </span>
             </div>
           </div>
         )}
 
-        {/* Supported Apps */}
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <h4 className="font-semibold text-gray-900 mb-2">Supported Apps:</h4>
-          <div className="flex flex-wrap gap-2">
-            {[
-              "GoPay",
-              "OVO",
-              "DANA",
-              "LinkAja",
-              "ShopeePay",
-              "BCA Mobile",
-              "BNI Mobile",
-              "BRI Mobile",
-              "Mandiri Online",
-            ].map((app) => (
-              <Badge key={app} variant="secondary" className="text-xs">
-                {app}
-              </Badge>
-            ))}
-          </div>
-        </div>
+      
       </CardContent>
     </Card>
   );
