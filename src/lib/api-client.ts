@@ -220,4 +220,18 @@ export const api = {
     cancelPayment: (orderId: string) =>
       apiClient.post(`/payments/cancel/${orderId}`),
   },
+  crypto: {
+    getCurrencies: () => apiClient.get("/api/plisio/currencies"),
+    createProductPayment: (paymentData: any) =>
+      apiClient.post("/api/plisio/create-product-payment", paymentData),
+    getPaymentStatus: (orderId: string) =>
+      apiClient.get(`/api/plisio/payment-status/${orderId}`),
+    checkPaymentStatus: (data: any) =>
+      apiClient.post("/api/plisio/check-payment-status", data),
+    getUserPayments: (userId: string) =>
+      apiClient.get(`/api/plisio/user-payments/${userId}`),
+    getPendingPayment: () => apiClient.get("/api/plisio/pending-payment"),
+    cancelPayment: (orderId: string) =>
+      apiClient.post(`/api/plisio/cancel-payment/${orderId}`),
+  },
 };

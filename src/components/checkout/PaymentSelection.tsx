@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,14 @@ import { useToast } from "@/hooks/use-toast";
 import { formatRupiahWithSymbol } from "@/utils/currencyFormatter";
 import { useRouter } from "next/router";
 import { api } from "@/lib/api-client";
+import { useSession } from "next-auth/react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface PaymentSelectionProps {
   productData: {
@@ -23,6 +31,14 @@ interface PaymentSelectionProps {
   shippingData: any;
 }
 
+interface Currency {
+  cid: string;
+  name: string;
+  currency: string;
+  icon?: string;
+  price_usd: string;
+}
+
 export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
   productData,
   addressData,
@@ -30,30 +46,12 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
 }) => {
   const { toast } = useToast();
   const router = useRouter();
+  const { data: session } = useSession();
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("gopay");
-
-  // Helper function to get the correct image URL
-  const getImageUrl = (imageUrl: string) => {
-    if (!imageUrl) {
-      return "/placeholder-image.svg"; // Fallback image
-    }
-
-    // If it's already a full URL, return as is
-    if (imageUrl.startsWith("http")) {
-      return imageUrl;
-    }
-
-    // If it's a local asset path, prepend the backend URL
-    if (imageUrl.startsWith("/assets/")) {
-      const backendUrl =
-        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-      return `${backendUrl}${imageUrl}`;
-    }
-
-    // Default fallback
-    return imageUrl;
-  };
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
+  const [selectedCurrency, setSelectedCurrency] = useState<string>("BTC");
+  const [loadingCurrencies, setLoadingCurrencies] = useState(false);
 
   // Calculate costs with robust fallbacks
   const productPrice =
@@ -61,6 +59,117 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
   const shippingCost = shippingData?.cost || 0;
   const adminFee = 1000; // Fixed admin fee of 1000
   const totalAmount = productPrice + shippingCost + adminFee;
+
+  // Load cryptocurrencies when component mounts
+  useEffect(() => {
+    const loadCurrencies = async () => {
+      try {
+        setLoadingCurrencies(true);
+        const response = (await api.crypto.getCurrencies()) as any;
+
+        if (response.success) {
+          setCurrencies(response.data);
+          // Set default currency to BTC if available, otherwise first currency
+          const defaultCurrency =
+            response.data.find((c: Currency) => c.currency === "BTC")
+              ?.currency ||
+            response.data[0]?.currency ||
+            "BTC";
+          setSelectedCurrency(defaultCurrency);
+        } else {
+          // Fallback currencies if API fails
+          const fallbackCurrencies: Currency[] = [
+            {
+              cid: "1",
+              name: "Bitcoin",
+              currency: "BTC",
+              price_usd: "50000",
+            },
+            {
+              cid: "2",
+              name: "Ethereum",
+              currency: "ETH",
+              price_usd: "3000",
+            },
+            {
+              cid: "3",
+              name: "Litecoin",
+              currency: "LTC",
+              price_usd: "100",
+            },
+          ];
+          setCurrencies(fallbackCurrencies);
+          setSelectedCurrency("BTC");
+        }
+      } catch (error) {
+        console.error("Error loading currencies:", error);
+        // Fallback currencies if API fails
+        const fallbackCurrencies: Currency[] = [
+          {
+            cid: "1",
+            name: "Bitcoin",
+            currency: "BTC",
+            price_usd: "50000",
+          },
+          {
+            cid: "2",
+            name: "Ethereum",
+            currency: "ETH",
+            price_usd: "3000",
+          },
+          {
+            cid: "3",
+            name: "Litecoin",
+            currency: "LTC",
+            price_usd: "100",
+          },
+        ];
+        setCurrencies(fallbackCurrencies);
+        setSelectedCurrency("BTC");
+      } finally {
+        setLoadingCurrencies(false);
+      }
+    };
+
+    loadCurrencies();
+  }, []);
+
+  // Helper function to calculate crypto amount based on USD amount and currency price
+  const calculateCryptoAmount = (
+    usdAmount: number,
+    currencyCode: string
+  ): number => {
+    const currency = currencies.find((c) => c.currency === currencyCode);
+    if (!currency) return 0;
+
+    const priceUsd = parseFloat(currency.price_usd);
+    if (priceUsd <= 0) return 0;
+
+    return usdAmount / priceUsd;
+  };
+
+  // Helper function to format crypto amount based on currency
+  const formatCryptoAmount = (amount: number, currencyCode: string): string => {
+    if (amount === 0) return "0";
+
+    // Different precision for different currencies
+    if (currencyCode === "BTC") {
+      return amount.toFixed(8);
+    } else if (currencyCode === "ETH") {
+      return amount.toFixed(6);
+    } else if (["SOL", "ADA", "DOT", "MATIC"].includes(currencyCode)) {
+      return amount.toFixed(4);
+    } else {
+      return amount.toFixed(2);
+    }
+  };
+
+  // Helper function to get currency display name
+  const getCurrencyDisplayName = (currencyCode: string): string => {
+    const currency = currencies.find((c) => c.currency === currencyCode);
+    return currency ? `${currency.name} (${currency.currency})` : currencyCode;
+  };
+
   const handlePayment = async () => {
     if (!addressData || !shippingData) {
       toast({
@@ -101,7 +210,47 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
 
     setIsProcessing(true);
     try {
-      // Determine payment method and bank
+      // Handle crypto payment
+      if (paymentMethod === "crypto") {
+        if (!session?.accessToken) {
+          toast({
+            title: "Authentication Required",
+            description: "Please login to use cryptocurrency payment",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Create crypto payment using Plisio
+        const response = (await api.crypto.createProductPayment({
+          productId: productData.id,
+          addressId: addressData.id,
+          origin: shippingData.origin,
+          destination: shippingData.destination,
+          weight: shippingData.weight,
+          courier: shippingData.courier,
+          service: shippingData.service,
+          productPrice: productPrice,
+          shippingCost: shippingCost,
+          adminFee: adminFee,
+          totalAmount: totalAmount,
+          currency: selectedCurrency,
+        })) as any;
+
+        if (response.success) {
+          // Redirect to Plisio hosted payment page
+          window.location.href = response.data.hostedUrl;
+        } else {
+          toast({
+            title: "Payment Failed",
+            description: response.error || "Failed to create crypto payment",
+            variant: "destructive",
+          });
+        }
+        return;
+      }
+
+      // Handle traditional payment methods
       let finalPaymentMethod = "bank_transfer";
       let bank = "bca";
 
@@ -166,21 +315,16 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
         {/* Product Info */}
         <div className="flex items-center space-x-3">
           <img
-            src={getImageUrl(productData.imageUrl)}
+            src={productData.imageUrl}
             alt={productData.name}
             className="w-16 h-16 object-cover rounded-lg"
-            onError={(e) => {
-              // Fallback to placeholder if image fails to load
-              const target = e.target as HTMLImageElement;
-              target.src = "/placeholder-image.svg";
-            }}
           />
           <div>
             <h3 className="font-semibold">{productData.name}</h3>
             <p className="text-sm text-gray-600">Product Price</p>
           </div>
           <div className="ml-auto">
-            <p className="font-semibold text-nowrap">
+            <p className="font-semibold">
               {formatRupiahWithSymbol(productPrice)}
             </p>
           </div>
@@ -217,6 +361,9 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
               </p>
               <p>Weight: {shippingData.weight}g</p>
               {shippingData.etd && <p>ETD: {shippingData.etd}</p>}
+              <p className="font-semibold text-green-600">
+                Shipping Cost: {formatRupiahWithSymbol(shippingCost)}
+              </p>
             </div>
           </div>
         )}
@@ -238,11 +385,24 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
             >
               <RadioGroupItem value="gopay" id="gopay" />
               <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
-                {/* Placeholder for QRIS logo */}
                 <span className="text-xs font-bold text-gray-600">QR</span>
               </div>
               <Label htmlFor="gopay" className="flex-1 cursor-pointer">
                 QRIS
+              </Label>
+            </div>
+
+            {/* Cryptocurrency Payment Method */}
+            <div
+              className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+              onClick={() => setPaymentMethod("crypto")}
+            >
+              <RadioGroupItem value="crypto" id="crypto" />
+              <div className="w-8 h-8 bg-orange-200 rounded flex items-center justify-center">
+                <span className="text-xs font-bold text-orange-600">₿</span>
+              </div>
+              <Label htmlFor="crypto" className="flex-1 cursor-pointer">
+                Cryptocurrency
               </Label>
             </div>
 
@@ -253,7 +413,6 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
             >
               <RadioGroupItem value="mandiri" id="mandiri" />
               <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
-                {/* Placeholder for Mandiri logo */}
                 <span className="text-xs font-bold text-gray-600">M</span>
               </div>
               <Label htmlFor="mandiri" className="flex-1 cursor-pointer">
@@ -267,7 +426,6 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
             >
               <RadioGroupItem value="bca" id="bca" />
               <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
-                {/* Placeholder for BCA logo */}
                 <span className="text-xs font-bold text-gray-600">BCA</span>
               </div>
               <Label htmlFor="bca" className="flex-1 cursor-pointer">
@@ -281,7 +439,6 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
             >
               <RadioGroupItem value="bri" id="bri" />
               <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
-                {/* Placeholder for BRI logo */}
                 <span className="text-xs font-bold text-gray-600">BRI</span>
               </div>
               <Label htmlFor="bri" className="flex-1 cursor-pointer">
@@ -295,7 +452,6 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
             >
               <RadioGroupItem value="bni" id="bni" />
               <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
-                {/* Placeholder for BNI logo */}
                 <span className="text-xs font-bold text-gray-600">BNI</span>
               </div>
               <Label htmlFor="bni" className="flex-1 cursor-pointer">
@@ -304,6 +460,53 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
             </div>
           </RadioGroup>
         </div>
+
+        {/* Cryptocurrency Selection */}
+        {paymentMethod === "crypto" && (
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">
+              Select Cryptocurrency:
+            </Label>
+            <Select
+              value={selectedCurrency}
+              onValueChange={setSelectedCurrency}
+              disabled={loadingCurrencies}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select cryptocurrency" />
+              </SelectTrigger>
+              <SelectContent>
+                {currencies.map((currency) => (
+                  <SelectItem key={currency.cid} value={currency.currency}>
+                    <div className="flex items-center gap-2">
+                      {currency.icon && (
+                        <img
+                          src={currency.icon}
+                          alt={currency.name}
+                          className="w-4 h-4"
+                        />
+                      )}
+                      <span>{getCurrencyDisplayName(currency.currency)}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedCurrency && (
+              <div className="text-sm text-gray-600">
+                ≈{" "}
+                {formatCryptoAmount(
+                  calculateCryptoAmount(
+                    totalAmount * 0.000065,
+                    selectedCurrency
+                  ),
+                  selectedCurrency
+                )}{" "}
+                {selectedCurrency}
+              </div>
+            )}
+          </div>
+        )}
 
         <Separator />
 
@@ -338,7 +541,9 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
         </Button>
 
         <p className="text-xs text-gray-500 text-center">
-          You will be redirected to payment page after clicking Pay Now.
+          {paymentMethod === "crypto"
+            ? "You will be redirected to Plisio's secure payment page."
+            : "You will be redirected to payment page after clicking Pay Now."}
         </p>
       </CardContent>
     </Card>

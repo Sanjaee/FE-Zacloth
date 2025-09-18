@@ -10,6 +10,7 @@ import { formatRupiahWithSymbol } from "@/utils/currencyFormatter";
 import { api } from "@/lib/api-client";
 import { VirtualAccountDisplay } from "@/components/payment/VirtualAccountDisplay";
 import { QRCodeDisplay } from "@/components/payment/QRCodeDisplay";
+import { CryptoPaymentDisplay } from "@/components/payment/CryptoPaymentDisplay";
 
 const PaymentPage: React.FC = () => {
   const router = useRouter();
@@ -139,7 +140,6 @@ const PaymentPage: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Side - Payment Information */}
           <div className="space-y-6">
-
             {/* Payment Method Display */}
             {paymentData.paymentMethod === "bank_transfer" && (
               <VirtualAccountDisplay
@@ -151,6 +151,13 @@ const PaymentPage: React.FC = () => {
             {(paymentData.paymentMethod === "gopay" ||
               paymentData.paymentMethod === "qris") && (
               <QRCodeDisplay paymentData={paymentData} onCopy={handleCopy} />
+            )}
+
+            {paymentData.paymentMethod === "crypto" && (
+              <CryptoPaymentDisplay
+                paymentData={paymentData}
+                onCopy={handleCopy}
+              />
             )}
 
             {paymentData.paymentMethod === "credit_card" && (
