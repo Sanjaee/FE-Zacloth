@@ -17,6 +17,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { CreditCard, Smartphone, Building2, QrCode } from "lucide-react";
 
 interface PaymentSelectionProps {
   productData: {
@@ -32,11 +40,23 @@ interface PaymentSelectionProps {
 }
 
 interface Currency {
-  cid: string;
   name: string;
+  cid: string;
   currency: string;
   icon?: string;
+  rate_usd: string;
   price_usd: string;
+  precision: number;
+  output_precision: number;
+  fiat: string;
+  fiat_rate: string;
+  min_sum_in: string;
+  invoice_commission_percentage: string;
+  hidden: number;
+  maintenance: boolean;
+  contractOf: string | null;
+  contractStandard: string | null;
+  allowMemo: boolean;
 }
 
 export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
@@ -52,6 +72,11 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [selectedCurrency, setSelectedCurrency] = useState<string>("BTC");
   const [loadingCurrencies, setLoadingCurrencies] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedPaymentGroup, setSelectedPaymentGroup] = useState<
+    "qris" | "crypto" | "bank"
+  >("qris");
+  const [selectedBank, setSelectedBank] = useState<string>("mandiri");
 
   // Calculate costs with robust fallbacks
   const productPrice =
@@ -80,22 +105,61 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
           // Fallback currencies if API fails
           const fallbackCurrencies: Currency[] = [
             {
-              cid: "1",
               name: "Bitcoin",
+              cid: "BTC",
               currency: "BTC",
-              price_usd: "50000",
+              icon: "https://plisio.net/img/psys-icon/BTC.svg",
+              rate_usd: "0.0000084889643463497453311",
+              price_usd: "50000.00000000",
+              precision: 8,
+              output_precision: 8,
+              fiat: "USD",
+              fiat_rate: "0.00000848",
+              min_sum_in: "0.00000010",
+              invoice_commission_percentage: "0.5",
+              hidden: 0,
+              maintenance: false,
+              contractOf: null,
+              contractStandard: null,
+              allowMemo: false,
             },
             {
-              cid: "2",
               name: "Ethereum",
+              cid: "ETH",
               currency: "ETH",
-              price_usd: "3000",
+              icon: "https://plisio.net/img/psys-icon/ETH.svg",
+              rate_usd: "0.0003333333333333333",
+              price_usd: "3000.00000000",
+              precision: 6,
+              output_precision: 6,
+              fiat: "USD",
+              fiat_rate: "0.00033333",
+              min_sum_in: "0.00000100",
+              invoice_commission_percentage: "0.5",
+              hidden: 0,
+              maintenance: false,
+              contractOf: null,
+              contractStandard: null,
+              allowMemo: false,
             },
             {
-              cid: "3",
               name: "Litecoin",
+              cid: "LTC",
               currency: "LTC",
-              price_usd: "100",
+              icon: "https://plisio.net/img/psys-icon/LTC.svg",
+              rate_usd: "0.01",
+              price_usd: "100.00000000",
+              precision: 2,
+              output_precision: 2,
+              fiat: "USD",
+              fiat_rate: "0.01",
+              min_sum_in: "0.01000000",
+              invoice_commission_percentage: "0.5",
+              hidden: 0,
+              maintenance: false,
+              contractOf: null,
+              contractStandard: null,
+              allowMemo: false,
             },
           ];
           setCurrencies(fallbackCurrencies);
@@ -103,29 +167,8 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
         }
       } catch (error) {
         console.error("Error loading currencies:", error);
-        // Fallback currencies if API fails
-        const fallbackCurrencies: Currency[] = [
-          {
-            cid: "1",
-            name: "Bitcoin",
-            currency: "BTC",
-            price_usd: "50000",
-          },
-          {
-            cid: "2",
-            name: "Ethereum",
-            currency: "ETH",
-            price_usd: "3000",
-          },
-          {
-            cid: "3",
-            name: "Litecoin",
-            currency: "LTC",
-            price_usd: "100",
-          },
-        ];
-        setCurrencies(fallbackCurrencies);
-        setSelectedCurrency("BTC");
+        setCurrencies([]);
+        setSelectedCurrency("");
       } finally {
         setLoadingCurrencies(false);
       }
@@ -168,6 +211,42 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
   const getCurrencyDisplayName = (currencyCode: string): string => {
     const currency = currencies.find((c) => c.currency === currencyCode);
     return currency ? `${currency.name} (${currency.currency})` : currencyCode;
+  };
+
+  // Helper function to get payment method display name
+  const getPaymentMethodDisplayName = (method: string): string => {
+    const methodNames: { [key: string]: string } = {
+      gopay: "QRIS",
+      crypto: "Cryptocurrency",
+      mandiri: "Mandiri Virtual Account",
+      bca: "BCA Virtual Account",
+      bri: "BRI Virtual Account",
+      bni: "BNI Virtual Account",
+    };
+    return methodNames[method] || method;
+  };
+
+  // Handle payment group selection
+  const handlePaymentGroupSelect = (group: "qris" | "crypto" | "bank") => {
+    setSelectedPaymentGroup(group);
+    if (group === "qris") {
+      setPaymentMethod("gopay");
+    } else if (group === "crypto") {
+      setPaymentMethod("crypto");
+    } else if (group === "bank") {
+      setPaymentMethod(selectedBank);
+    }
+  };
+
+  // Handle bank selection
+  const handleBankSelect = (bank: string) => {
+    setSelectedBank(bank);
+    setPaymentMethod(bank);
+  };
+
+  // Handle dialog close and confirm selection
+  const handleDialogClose = () => {
+    setIsDialogOpen(false);
   };
 
   const handlePayment = async () => {
@@ -373,140 +452,295 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
         {/* Payment Method Selection */}
         <div>
           <h4 className="font-semibold mb-3">Metode Pembayaran</h4>
-          <RadioGroup
-            value={paymentMethod}
-            onValueChange={setPaymentMethod}
-            className="space-y-0"
-          >
-            {/* QRIS Payment Method - Top */}
-            <div
-              className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-              onClick={() => setPaymentMethod("gopay")}
-            >
-              <RadioGroupItem value="gopay" id="gopay" />
-              <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
-                <span className="text-xs font-bold text-gray-600">QR</span>
-              </div>
-              <Label htmlFor="gopay" className="flex-1 cursor-pointer">
-                QRIS
-              </Label>
-            </div>
-
-            {/* Cryptocurrency Payment Method */}
-            <div
-              className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-              onClick={() => setPaymentMethod("crypto")}
-            >
-              <RadioGroupItem value="crypto" id="crypto" />
-              <div className="w-8 h-8 bg-orange-200 rounded flex items-center justify-center">
-                <span className="text-xs font-bold text-orange-600">₿</span>
-              </div>
-              <Label htmlFor="crypto" className="flex-1 cursor-pointer">
-                Cryptocurrency
-              </Label>
-            </div>
-
-            {/* Bank Transfer Options */}
-            <div
-              className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-              onClick={() => setPaymentMethod("mandiri")}
-            >
-              <RadioGroupItem value="mandiri" id="mandiri" />
-              <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
-                <span className="text-xs font-bold text-gray-600">M</span>
-              </div>
-              <Label htmlFor="mandiri" className="flex-1 cursor-pointer">
-                Mandiri Virtual Account
-              </Label>
-            </div>
-
-            <div
-              className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-              onClick={() => setPaymentMethod("bca")}
-            >
-              <RadioGroupItem value="bca" id="bca" />
-              <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
-                <span className="text-xs font-bold text-gray-600">BCA</span>
-              </div>
-              <Label htmlFor="bca" className="flex-1 cursor-pointer">
-                BCA Virtual Account
-              </Label>
-            </div>
-
-            <div
-              className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-              onClick={() => setPaymentMethod("bri")}
-            >
-              <RadioGroupItem value="bri" id="bri" />
-              <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
-                <span className="text-xs font-bold text-gray-600">BRI</span>
-              </div>
-              <Label htmlFor="bri" className="flex-1 cursor-pointer">
-                BRI Virtual Account
-              </Label>
-            </div>
-
-            <div
-              className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-              onClick={() => setPaymentMethod("bni")}
-            >
-              <RadioGroupItem value="bni" id="bni" />
-              <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
-                <span className="text-xs font-bold text-gray-600">BNI</span>
-              </div>
-              <Label htmlFor="bni" className="flex-1 cursor-pointer">
-                BNI Virtual Account
-              </Label>
-            </div>
-          </RadioGroup>
-        </div>
-
-        {/* Cryptocurrency Selection */}
-        {paymentMethod === "crypto" && (
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">
-              Select Cryptocurrency:
-            </Label>
-            <Select
-              value={selectedCurrency}
-              onValueChange={setSelectedCurrency}
-              disabled={loadingCurrencies}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select cryptocurrency" />
-              </SelectTrigger>
-              <SelectContent>
-                {currencies.map((currency) => (
-                  <SelectItem key={currency.cid} value={currency.currency}>
-                    <div className="flex items-center gap-2">
-                      {currency.icon && (
-                        <img
-                          src={currency.icon}
-                          alt={currency.name}
-                          className="w-4 h-4"
-                        />
-                      )}
-                      <span>{getCurrencyDisplayName(currency.currency)}</span>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full justify-between h-12 text-left"
+              >
+                <div className="flex items-center space-x-3">
+                  {paymentMethod === "gopay" && (
+                    <div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center">
+                      <QrCode className="w-4 h-4 text-blue-600" />
                     </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {selectedCurrency && (
-              <div className="text-sm text-gray-600">
-                ≈{" "}
-                {formatCryptoAmount(
-                  calculateCryptoAmount(
-                    totalAmount * 0.000065,
-                    selectedCurrency
-                  ),
-                  selectedCurrency
-                )}{" "}
-                {selectedCurrency}
+                  )}
+                  {paymentMethod === "crypto" && (
+                    <div className="w-8 h-8 bg-orange-100 rounded flex items-center justify-center">
+                      <CreditCard className="w-4 h-4 text-orange-600" />
+                    </div>
+                  )}
+                  {["mandiri", "bca", "bri", "bni"].includes(paymentMethod) && (
+                    <div className="w-8 h-8 bg-green-100 rounded flex items-center justify-center">
+                      <Building2 className="w-4 h-4 text-green-600" />
+                    </div>
+                  )}
+                  <span className="font-medium">
+                    {getPaymentMethodDisplayName(paymentMethod)}
+                  </span>
+                </div>
+                <span className="text-gray-400">▼</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md max-h-[80vh] flex flex-col">
+              <DialogHeader>
+                <DialogTitle>Pilih Metode Pembayaran</DialogTitle>
+              </DialogHeader>
+
+              <div className="flex-1 overflow-y-auto">
+                {/* Payment Group Buttons */}
+                <div className="grid grid-cols-3 gap-2 mb-6">
+                  <Button
+                    variant={
+                      selectedPaymentGroup === "qris" ? "default" : "outline"
+                    }
+                    onClick={() => handlePaymentGroupSelect("qris")}
+                    className="flex flex-col items-center space-y-2 h-20"
+                  >
+                    <QrCode className="w-6 h-6" />
+                    <span className="text-xs">QRIS</span>
+                  </Button>
+                  <Button
+                    variant={
+                      selectedPaymentGroup === "crypto" ? "default" : "outline"
+                    }
+                    onClick={() => handlePaymentGroupSelect("crypto")}
+                    className="flex flex-col items-center space-y-2 h-20"
+                  >
+                    <CreditCard className="w-6 h-6" />
+                    <span className="text-xs">Crypto</span>
+                  </Button>
+                  <Button
+                    variant={
+                      selectedPaymentGroup === "bank" ? "default" : "outline"
+                    }
+                    onClick={() => handlePaymentGroupSelect("bank")}
+                    className="flex flex-col items-center space-y-2 h-20"
+                  >
+                    <Building2 className="w-6 h-6" />
+                    <span className="text-xs">Bank</span>
+                  </Button>
+                </div>
+
+                {/* Dynamic Content Based on Selection */}
+                {selectedPaymentGroup === "qris" && (
+                  <div className="space-y-4">
+                    <div className="text-center p-4 bg-blue-50 rounded-lg">
+                      <QrCode className="w-12 h-12 text-blue-600 mx-auto mb-2" />
+                      <h3 className="font-semibold text-blue-900">
+                        QRIS Payment
+                      </h3>
+                      <p className="text-sm text-blue-700">
+                        Scan QR code with your mobile banking app
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {selectedPaymentGroup === "crypto" && (
+                  <div className="space-y-4">
+                    <div className="text-center p-4 bg-orange-50 rounded-lg mb-4">
+                      <CreditCard className="w-12 h-12 text-orange-600 mx-auto mb-2" />
+                      <h3 className="font-semibold text-orange-900">
+                        Cryptocurrency Payment
+                      </h3>
+                      <p className="text-sm text-orange-700">
+                        Pay with Bitcoin, Ethereum, or other cryptocurrencies
+                      </p>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">
+                        Select Cryptocurrency:
+                      </Label>
+
+                      {loadingCurrencies ? (
+                        <div className="text-center py-4">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto"></div>
+                          <p className="text-sm text-gray-500 mt-2">
+                            Loading currencies...
+                          </p>
+                        </div>
+                      ) : currencies.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto">
+                          {currencies.map((currency) => (
+                            <Button
+                              key={currency.cid}
+                              variant={
+                                selectedCurrency === currency.currency
+                                  ? "default"
+                                  : "outline"
+                              }
+                              onClick={() =>
+                                setSelectedCurrency(currency.currency)
+                              }
+                              className="flex flex-col items-center h-24 p-6"
+                            >
+                              {currency.icon && (
+                                <img
+                                  src={currency.icon}
+                                  alt={currency.name}
+                                  className="w-8 h-8"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = "none";
+                                  }}
+                                />
+                              )}
+                              <div className="text-center">
+                                <div className="text-xs font-semibold">
+                                  {currency.currency}
+                                </div>
+                                <div className="text-xs text-gray-500 truncate max-w-20">
+                                  {currency.name}
+                                </div>
+                              </div>
+                            </Button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-4 text-gray-500">
+                          <p className="text-sm">
+                            No cryptocurrencies available
+                          </p>
+                        </div>
+                      )}
+
+                      {selectedCurrency && (
+                        <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                          <div className="font-medium">Amount to pay:</div>
+                          <div className="text-lg font-bold text-orange-600">
+                            {formatCryptoAmount(
+                              calculateCryptoAmount(
+                                totalAmount * 0.000065,
+                                selectedCurrency
+                              ),
+                              selectedCurrency
+                            )}{" "}
+                            {selectedCurrency}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            ≈ ${(totalAmount * 0.000065).toFixed(2)} USD
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {selectedPaymentGroup === "bank" && (
+                  <div className="space-y-4">
+                    <div className="text-center p-4 bg-green-50 rounded-lg mb-4">
+                      <Building2 className="w-12 h-12 text-green-600 mx-auto mb-2" />
+                      <h3 className="font-semibold text-green-900">
+                        Bank Transfer
+                      </h3>
+                      <p className="text-sm text-green-700">
+                        Virtual Account payment
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">
+                        Select Bank:
+                      </Label>
+                      <RadioGroup
+                        value={selectedBank}
+                        onValueChange={handleBankSelect}
+                        className="space-y-2"
+                      >
+                        <div
+                          className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                          onClick={() => handleBankSelect("mandiri")}
+                        >
+                          <RadioGroupItem value="mandiri" id="mandiri" />
+                          <div className="w-8 h-8 bg-red-100 rounded flex items-center justify-center">
+                            <span className="text-xs font-bold text-red-600">
+                              M
+                            </span>
+                          </div>
+                          <Label
+                            htmlFor="mandiri"
+                            className="flex-1 cursor-pointer"
+                          >
+                            Mandiri Virtual Account
+                          </Label>
+                        </div>
+
+                        <div
+                          className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                          onClick={() => handleBankSelect("bca")}
+                        >
+                          <RadioGroupItem value="bca" id="bca" />
+                          <div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center">
+                            <span className="text-xs font-bold text-blue-600">
+                              BCA
+                            </span>
+                          </div>
+                          <Label
+                            htmlFor="bca"
+                            className="flex-1 cursor-pointer"
+                          >
+                            BCA Virtual Account
+                          </Label>
+                        </div>
+
+                        <div
+                          className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                          onClick={() => handleBankSelect("bri")}
+                        >
+                          <RadioGroupItem value="bri" id="bri" />
+                          <div className="w-8 h-8 bg-red-100 rounded flex items-center justify-center">
+                            <span className="text-xs font-bold text-red-600">
+                              BRI
+                            </span>
+                          </div>
+                          <Label
+                            htmlFor="bri"
+                            className="flex-1 cursor-pointer"
+                          >
+                            BRI Virtual Account
+                          </Label>
+                        </div>
+
+                        <div
+                          className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                          onClick={() => handleBankSelect("bni")}
+                        >
+                          <RadioGroupItem value="bni" id="bni" />
+                          <div className="w-8 h-8 bg-yellow-100 rounded flex items-center justify-center">
+                            <span className="text-xs font-bold text-yellow-600">
+                              BNI
+                            </span>
+                          </div>
+                          <Label
+                            htmlFor="bni"
+                            className="flex-1 cursor-pointer"
+                          >
+                            BNI Virtual Account
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        )}
+
+              {/* Dialog Actions */}
+              <div className="flex space-x-2 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={handleDialogClose}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button onClick={handleDialogClose} className="flex-1">
+                  Confirm
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
 
         <Separator />
 
