@@ -50,7 +50,7 @@ const CheckoutPage: React.FC = () => {
     const checkUserAddresses = async () => {
       try {
         setLoadingAddresses(true);
-        const response = (await api.users.getAddresses()) as any;
+        const response = (await api.rajaOngkir.getAddresses()) as any;
         if (response.success) {
           setUserAddresses(response.addresses);
           setHasAddresses(response.hasAddresses);
@@ -90,11 +90,11 @@ const CheckoutPage: React.FC = () => {
   const handleAddressSubmit = async (data: any) => {
     try {
       // Save address to backend
-      const response = (await api.users.createAddress(data)) as any;
+      const response = (await api.rajaOngkir.createAddress(data)) as any;
       if (response.success) {
         setAddressData(response.address);
         // Refresh addresses list
-        const addressesResponse = (await api.users.getAddresses()) as any;
+        const addressesResponse = (await api.rajaOngkir.getAddresses()) as any;
         if (addressesResponse.success) {
           setUserAddresses(addressesResponse.addresses);
           setHasAddresses(addressesResponse.hasAddresses);

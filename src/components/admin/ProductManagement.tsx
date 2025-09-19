@@ -433,7 +433,6 @@ export function ProductManagement() {
           })),
         };
 
-        console.log("Form data being sent:", formDataWithImages);
         const data = await api.products.createWithImage(formDataWithImages);
 
         toast({

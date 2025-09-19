@@ -221,12 +221,6 @@ export const AddressForm: React.FC<AddressFormProps> = ({
           (item: any) => item.code === shippingData.courier
         );
 
-        console.log("Shipping calculation result:", {
-          result,
-          shippingData,
-          selectedService,
-        });
-
         onShippingCalculate({
           ...shippingData,
           cost: selectedService?.cost || 0,
@@ -324,7 +318,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
   // Delete address function
   const handleDeleteAddress = async (addressId: string) => {
     try {
-      const response = (await api.users.deleteAddress(addressId)) as any;
+      const response = (await api.rajaOngkir.deleteAddress(addressId)) as any;
       if (response.success) {
         toast({
           title: "Success",
@@ -385,7 +379,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
     if (!editingAddress) return;
 
     try {
-      const response = (await api.users.updateAddress(
+      const response = (await api.rajaOngkir.updateAddress(
         editingAddress.id.toString(),
         addressData
       )) as any;

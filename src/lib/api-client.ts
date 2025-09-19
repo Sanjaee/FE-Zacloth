@@ -159,13 +159,6 @@ export const api = {
     getProfile: () => apiClient.get("/users/profile"),
     updateProfile: (profileData: any) =>
       apiClient.put("/users/profile", profileData),
-    getAddresses: () => apiClient.get("/users/addresses"),
-    createAddress: (addressData: any) =>
-      apiClient.post("/users/addresses", addressData),
-    updateAddress: (addressId: string, addressData: any) =>
-      apiClient.put(`/users/addresses/${addressId}`, addressData),
-    deleteAddress: (addressId: string) =>
-      apiClient.delete(`/users/addresses/${addressId}`),
   },
 
   // Visitor endpoints
@@ -206,6 +199,29 @@ export const api = {
     generate: (data: any) => apiClient.post("/qr/generate", data),
     generateProfileSimple: (profileId: string) =>
       apiClient.get(`/qr/profile/${profileId}/simple`),
+  },
+
+  // RajaOngkir endpoints (including addresses)
+  rajaOngkir: {
+    getProvinces: () => apiClient.get("/rajaongkir/provinces"),
+    getCities: (provinceId?: string) =>
+      provinceId
+        ? apiClient.get(`/rajaongkir/cities/${provinceId}`)
+        : apiClient.get("/rajaongkir/cities"),
+    getDistricts: (cityId: string) =>
+      apiClient.get(`/rajaongkir/districts/${cityId}`),
+    getCouriers: () => apiClient.get("/rajaongkir/couriers"),
+    getCost: (costData: any) => apiClient.post("/rajaongkir/cost", costData),
+    getCostGuest: (costData: any) =>
+      apiClient.post("/rajaongkir/cost-guest", costData),
+    // Address endpoints
+    getAddresses: () => apiClient.get("/rajaongkir/addresses"),
+    createAddress: (addressData: any) =>
+      apiClient.post("/rajaongkir/addresses", addressData),
+    updateAddress: (addressId: string, addressData: any) =>
+      apiClient.put(`/rajaongkir/addresses/${addressId}`, addressData),
+    deleteAddress: (addressId: string) =>
+      apiClient.delete(`/rajaongkir/addresses/${addressId}`),
   },
 
   // Payment endpoints
