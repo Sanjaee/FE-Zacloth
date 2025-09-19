@@ -314,7 +314,6 @@ export const AddressForm: React.FC<AddressFormProps> = ({
       subdistrictName: currentAddress.subdistrictName || "",
     };
 
-    console.log("Change address - setting form data:", formDataToSet); // Debug log
     setFormData(formDataToSet);
 
     // Load cities and districts for the current address
@@ -456,7 +455,6 @@ export const AddressForm: React.FC<AddressFormProps> = ({
 
   // Start editing address
   const handleEditAddress = (address: any) => {
-    console.log("Editing address:", address); // Debug log
 
     setEditingAddress(address);
     setIsEditing(true);
@@ -478,7 +476,6 @@ export const AddressForm: React.FC<AddressFormProps> = ({
       subdistrictName: address.subdistrictName || "",
     };
 
-    console.log("Setting form data:", formDataToSet); // Debug log
     setFormData(formDataToSet);
 
     // Load cities and districts for the address
