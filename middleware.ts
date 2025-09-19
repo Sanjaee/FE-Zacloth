@@ -10,6 +10,7 @@ export function mainMiddleware(request: NextRequest) {
 export default withAuth(mainMiddleware, [
   "/admin",
   "/checkout",
+  "/checkout/:id",
   "/payment",
   "/dashboard",
 ]); // Routes yang memerlukan authentication

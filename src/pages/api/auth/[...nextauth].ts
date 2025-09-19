@@ -1,5 +1,6 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
 
 // Function to refresh access token
 async function refreshAccessToken(token: any) {
@@ -113,6 +114,17 @@ export const authOptions: NextAuthOptions = {
         }
       },
     }),
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          prompt: "consent",
+          access_type: "offline",
+          response_type: "code",
+        },
+      },
+    }),
   ],
   session: {
     strategy: "jwt",
@@ -126,6 +138,49 @@ export const authOptions: NextAuthOptions = {
     error: "/login",
   },
   callbacks: {
+    async signIn({ user, account, profile }) {
+      // Handle Google OAuth sign in
+      if (account?.provider === "google") {
+        try {
+          // Send user data to backend to create/update user in database
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/google/callback`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                googleId: profile?.sub,
+                email: profile?.email,
+                name: profile?.name,
+                picture: (profile as any)?.picture,
+              }),
+            }
+          );
+
+          const data = await response.json();
+
+          if (data.success) {
+            // Store user data in the user object for JWT callback
+            user.id = data.user.userId;
+            user.username = data.user.username;
+            user.role = data.user.role;
+            user.accessToken = data.accessToken;
+            user.refreshToken = data.refreshToken;
+            return true;
+          }
+
+          return false;
+        } catch (error) {
+          console.error("Google OAuth error:", error);
+          return false;
+        }
+      }
+
+      // For credentials provider, allow sign in
+      return true;
+    },
     async jwt({ token, user, account }) {
       // Initial sign in
       if (user && account) {
