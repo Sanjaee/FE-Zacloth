@@ -659,6 +659,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                   placeholder="Select province..."
                   title="Select Province"
                   searchPlaceholder="Search province..."
+                  displayValue={formData.provinceName}
                 />
               </div>
               <div>
