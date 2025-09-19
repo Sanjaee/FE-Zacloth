@@ -65,7 +65,6 @@ const ProductDetailPage: React.FC = () => {
   const { data: session, status } = useSession();
   const { toast } = useToast();
   const { product, loading, error } = useProduct(router.query.id);
-  console.log(session);
   // Show skeleton while loading
   if (loading) {
     return <ProductDetailSkeleton />;

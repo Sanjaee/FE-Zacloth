@@ -20,7 +20,6 @@ export default function Navbar({ onSearchChange, searchTerm }: NavbarProps) {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
-  console.log(session);
   // Sync local search term with prop
   useEffect(() => {
     setLocalSearchTerm(searchTerm);
