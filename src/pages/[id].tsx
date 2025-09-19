@@ -1,5 +1,6 @@
 import React from "react";
 import { useRouter } from "next/router";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -61,6 +62,7 @@ interface Product {
 
 const ProductDetailPage: React.FC = () => {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const { toast } = useToast();
   const { product, loading, error } = useProduct(router.query.id);
 
@@ -110,6 +112,25 @@ const ProductDetailPage: React.FC = () => {
       month: "long",
       day: "numeric",
     });
+  };
+
+  // Handle buy now button click
+  const handleBuyNow = () => {
+    if (!session) {
+      // User not logged in, redirect to login with callback URL
+      const callbackUrl = encodeURIComponent(router.asPath);
+      router.push(`/login?callbackUrl=${callbackUrl}`);
+      toast({
+        title: "Login Diperlukan",
+        description:
+          "Silakan login terlebih dahulu untuk melanjutkan pembelian.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // User is logged in, proceed to checkout
+    router.push(`/checkout/${product.id}`);
   };
 
   // Helper function to get the correct image URL
@@ -363,13 +384,29 @@ const ProductDetailPage: React.FC = () => {
             {/* Action Buttons */}
             <div className="space-y-3">
               <Button
-                onClick={() => router.push(`/checkout/${product.id}`)}
+                onClick={handleBuyNow}
                 className="w-full"
                 size="lg"
+                disabled={status === "loading"}
               >
-                Beli Sekarang
+                {status === "loading" ? "Loading..." : "Beli Sekarang"}
               </Button>
-              <Button variant="outline" className="w-full" size="lg">
+              <Button
+                variant="outline"
+                className="w-full"
+                size="lg"
+                disabled={!session}
+                onClick={() => {
+                  if (!session) {
+                    toast({
+                      title: "Login Diperlukan",
+                      description:
+                        "Silakan login terlebih dahulu untuk menambah ke keranjang.",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+              >
                 Tambah ke Keranjang
               </Button>
             </div>
