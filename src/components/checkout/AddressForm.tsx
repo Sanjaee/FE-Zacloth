@@ -291,13 +291,48 @@ export const AddressForm: React.FC<AddressFormProps> = ({
     // Show full address inputs again
     setIsAddressSaved(false);
     setShowAddressForm(true);
-    // Reset destination and district so user reselects
-    setFormData((prev) => ({
-      ...prev,
-      subdistrictId: "",
-      subdistrictName: "",
-    }));
-    setShippingData((prev) => ({ ...prev, destination: "" }));
+    
+    // Reset editing state (in case we were editing before)
+    setEditingAddress(null);
+    setIsEditing(false);
+    
+    // Get the current address data (either selectedAddress or formData)
+    const currentAddress = selectedAddress || formData;
+
+    // Pre-fill form with current address data
+    const formDataToSet = {
+      recipientName: currentAddress.recipientName || "",
+      phoneNumber: currentAddress.phoneNumber || "",
+      provinceId: currentAddress.provinceId?.toString() || "",
+      provinceName: currentAddress.provinceName || "",
+      cityId: currentAddress.cityId?.toString() || "",
+      cityName: currentAddress.cityName || "",
+      postalCode: currentAddress.postalCode || "",
+      addressDetail: currentAddress.addressDetail || "",
+      isPrimary: currentAddress.isPrimary || false,
+      subdistrictId: currentAddress.subdistrictId?.toString() || "",
+      subdistrictName: currentAddress.subdistrictName || "",
+    };
+
+    console.log("Change address - setting form data:", formDataToSet); // Debug log
+    setFormData(formDataToSet);
+
+    // Load cities and districts for the current address
+    if (currentAddress.provinceId) {
+      fetchCities(currentAddress.provinceId.toString());
+    }
+    if (currentAddress.cityId) {
+      fetchDistricts(currentAddress.cityId.toString());
+    }
+
+    // Set destination for shipping calculation
+    const destinationId = currentAddress.subdistrictId || currentAddress.cityId;
+    if (destinationId) {
+      setShippingData((prev) => ({
+        ...prev,
+        destination: destinationId.toString(),
+      }));
+    }
   };
 
   const handleSelectExistingAddress = (address: any) => {
@@ -421,24 +456,30 @@ export const AddressForm: React.FC<AddressFormProps> = ({
 
   // Start editing address
   const handleEditAddress = (address: any) => {
+    console.log("Editing address:", address); // Debug log
+
     setEditingAddress(address);
     setIsEditing(true);
     setShowAddressForm(true);
+    setIsAddressSaved(false); // Ensure form is shown, not summary
 
     // Pre-fill form with address data
-    setFormData({
-      recipientName: address.recipientName,
-      phoneNumber: address.phoneNumber,
-      provinceId: address.provinceId.toString(),
-      provinceName: address.provinceName,
-      cityId: address.cityId.toString(),
-      cityName: address.cityName,
+    const formDataToSet = {
+      recipientName: address.recipientName || "",
+      phoneNumber: address.phoneNumber || "",
+      provinceId: address.provinceId?.toString() || "",
+      provinceName: address.provinceName || "",
+      cityId: address.cityId?.toString() || "",
+      cityName: address.cityName || "",
       postalCode: address.postalCode || "",
-      addressDetail: address.addressDetail,
-      isPrimary: address.isPrimary,
+      addressDetail: address.addressDetail || "",
+      isPrimary: address.isPrimary || false,
       subdistrictId: address.subdistrictId?.toString() || "",
       subdistrictName: address.subdistrictName || "",
-    });
+    };
+
+    console.log("Setting form data:", formDataToSet); // Debug log
+    setFormData(formDataToSet);
 
     // Load cities and districts for the address
     if (address.provinceId) {
@@ -607,11 +648,16 @@ export const AddressForm: React.FC<AddressFormProps> = ({
       ) : isAddressSaved ? (
         <AddressSummary />
       ) : (
-        <Card>
+        <Card className={isEditing ? "border-blue-500 bg-blue-50" : ""}>
           <CardHeader>
-            <CardTitle>
-              {isEditing ? "Edit Shipping Address" : "Shipping Address"}
+            <CardTitle className={isEditing ? "text-blue-700" : ""}>
+              {isEditing ? "✏️ Edit Shipping Address" : "Shipping Address"}
             </CardTitle>
+            {isEditing && (
+              <p className="text-sm text-blue-600 mt-1">
+                Editing address for {editingAddress?.recipientName}
+              </p>
+            )}
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -676,6 +722,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                   title="Select City"
                   searchPlaceholder="Search city..."
                   disabled={!formData.provinceId}
+                  displayValue={formData.cityName}
                 />
               </div>
             </div>
