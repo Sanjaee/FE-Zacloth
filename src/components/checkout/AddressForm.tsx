@@ -291,11 +291,11 @@ export const AddressForm: React.FC<AddressFormProps> = ({
     // Show full address inputs again
     setIsAddressSaved(false);
     setShowAddressForm(true);
-    
+
     // Reset editing state (in case we were editing before)
     setEditingAddress(null);
     setIsEditing(false);
-    
+
     // Get the current address data (either selectedAddress or formData)
     const currentAddress = selectedAddress || formData;
 
