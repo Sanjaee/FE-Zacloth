@@ -345,6 +345,30 @@ export const AddressForm: React.FC<AddressFormProps> = ({
             onAddressSelect(null);
           }
         }
+
+        // Show address form automatically after deletion
+        setIsAddressSaved(false);
+        setShowAddressForm(true);
+        setEditingAddress(null);
+        setIsEditing(false);
+
+        // Reset form data
+        setFormData({
+          recipientName: "",
+          phoneNumber: "",
+          provinceId: "",
+          provinceName: "",
+          cityId: "",
+          cityName: "",
+          postalCode: "",
+          addressDetail: "",
+          isPrimary: true,
+          subdistrictId: "",
+          subdistrictName: "",
+        });
+
+        // Reset shipping data destination
+        setShippingData((prev) => ({ ...prev, destination: "" }));
       }
     } catch (error) {
       console.error("Error deleting address:", error);
