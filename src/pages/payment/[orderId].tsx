@@ -278,7 +278,7 @@ const PaymentPage: React.FC = () => {
               {paymentData.status?.toLowerCase() === "pending" && (
                 <Button
                   onClick={() =>
-                    api.payments.cancelPayment(paymentData.orderId)
+                    api.unifiedPayments.cancelPayment(paymentData.orderId)
                   }
                   variant="destructive"
                   className="w-full"
