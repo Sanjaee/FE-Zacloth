@@ -2,19 +2,26 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { AddressForm } from "@/components/checkout/AddressForm";
 import { PaymentSelection } from "@/components/checkout/PaymentSelection";
+import { PendingPaymentDialog } from "@/components/checkout/PendingPaymentDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { api } from "@/lib/api-client";
+import { useToast } from "@/hooks/use-toast";
 
 const CheckoutPage: React.FC = () => {
   const router = useRouter();
+  const { toast } = useToast();
   const [addressData, setAddressData] = useState<any>(null);
   const [shippingData, setShippingData] = useState<any>(null);
   const [productData, setProductData] = useState<any>(null);
   const [userAddresses, setUserAddresses] = useState<any[]>([]);
   const [hasAddresses, setHasAddresses] = useState<boolean>(false);
   const [loadingAddresses, setLoadingAddresses] = useState<boolean>(true);
+  const [pendingPayment, setPendingPayment] = useState<any>(null);
+  const [showPendingDialog, setShowPendingDialog] = useState<boolean>(false);
+  const [checkingPendingPayment, setCheckingPendingPayment] =
+    useState<boolean>(true);
 
   // Get product data from URL parameter
   useEffect(() => {
@@ -44,6 +51,26 @@ const CheckoutPage: React.FC = () => {
       getProductData();
     }
   }, [router.isReady, router.query.id]);
+
+  // Check for pending payments
+  useEffect(() => {
+    const checkPendingPayment = async () => {
+      try {
+        setCheckingPendingPayment(true);
+        const response = (await api.payments.getPendingPayment()) as any;
+        if (response.success && response.data) {
+          setPendingPayment(response.data);
+          setShowPendingDialog(true);
+        }
+      } catch (error) {
+        console.error("Error checking pending payment:", error);
+      } finally {
+        setCheckingPendingPayment(false);
+      }
+    };
+
+    checkPendingPayment();
+  }, []);
 
   // Check for existing user addresses
   useEffect(() => {
@@ -116,6 +143,28 @@ const CheckoutPage: React.FC = () => {
     setShippingData(data);
   };
 
+  const handleCancelPayment = async (orderId: string) => {
+    try {
+      const response = (await api.payments.cancelPayment(orderId)) as any;
+      if (response.success) {
+        setPendingPayment(null);
+        setShowPendingDialog(false);
+        toast({
+          title: "Payment Cancelled",
+          description: "Your pending payment has been cancelled successfully.",
+        });
+      } else {
+        throw new Error(response.error || "Failed to cancel payment");
+      }
+    } catch (error: any) {
+      throw new Error(error.message || "Failed to cancel payment");
+    }
+  };
+
+  const handleRedirectToPayment = (orderId: string) => {
+    router.push(`/payment/${orderId}`);
+  };
+
   if (!productData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -141,6 +190,15 @@ const CheckoutPage: React.FC = () => {
             Back
           </Button>
         </div>
+
+        {/* Pending Payment Dialog */}
+        <PendingPaymentDialog
+          isOpen={showPendingDialog}
+          onClose={() => {}}
+          pendingPayment={pendingPayment}
+          onCancelPayment={handleCancelPayment}
+          onRedirectToPayment={handleRedirectToPayment}
+        />
 
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

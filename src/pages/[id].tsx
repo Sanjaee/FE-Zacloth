@@ -69,7 +69,6 @@ const ProductDetailPage: React.FC = () => {
   if (loading) {
     return <ProductDetailSkeleton />;
   }
-
   // Show error state
   if (error || !product) {
     return (
