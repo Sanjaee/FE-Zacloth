@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +24,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { CreditCard, Smartphone, Building2, QrCode } from "lucide-react";
+import {
+  Smartphone,
+  Building2,
+  QrCode,
+  Coins,
+  CreditCard,
+} from "lucide-react";
 
 interface PaymentSelectionProps {
   productData: {
@@ -101,79 +107,35 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
       const response = (await api.crypto.getCurrencies()) as any;
 
       if (response.success) {
-        setCurrencies(response.data);
-        // Show only first 6 currencies initially
-        setDisplayedCurrencies(response.data.slice(0, 6));
+        // Filter and sort currencies for better performance
+        const filteredCurrencies = response.data
+          .filter((c: Currency) => !c.hidden && !c.maintenance)
+          .sort((a: Currency, b: Currency) => {
+            // Prioritize popular currencies
+            const popular = ["BTC", "ETH", "USDT", "USDC", "BNB", "ADA"];
+            const aIndex = popular.indexOf(a.currency);
+            const bIndex = popular.indexOf(b.currency);
+            if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+            if (aIndex !== -1) return -1;
+            if (bIndex !== -1) return 1;
+            return 0;
+          });
+
+        setCurrencies(filteredCurrencies);
+        // Show only first 4 currencies initially (2x2 grid) for better performance
+        setDisplayedCurrencies(filteredCurrencies.slice(0, 4));
         // Set default currency to BTC if available, otherwise first currency
         const defaultCurrency =
-          response.data.find((c: Currency) => c.currency === "BTC")?.currency ||
-          response.data[0]?.currency ||
+          filteredCurrencies.find((c: Currency) => c.currency === "BTC")
+            ?.currency ||
+          filteredCurrencies[0]?.currency ||
           "BTC";
         setSelectedCurrency(defaultCurrency);
       } else {
-        // Fallback currencies if API fails
-        const fallbackCurrencies: Currency[] = [
-          {
-            name: "Bitcoin",
-            cid: "BTC",
-            currency: "BTC",
-            icon: "https://plisio.net/img/psys-icon/BTC.svg",
-            rate_usd: "0.0000084889643463497453311",
-            price_usd: "50000.00000000",
-            precision: 8,
-            output_precision: 8,
-            fiat: "USD",
-            fiat_rate: "0.00000848",
-            min_sum_in: "0.00000010",
-            invoice_commission_percentage: "0.5",
-            hidden: 0,
-            maintenance: false,
-            contractOf: null,
-            contractStandard: null,
-            allowMemo: false,
-          },
-          {
-            name: "Ethereum",
-            cid: "ETH",
-            currency: "ETH",
-            icon: "https://plisio.net/img/psys-icon/ETH.svg",
-            rate_usd: "0.0003333333333333333",
-            price_usd: "3000.00000000",
-            precision: 6,
-            output_precision: 6,
-            fiat: "USD",
-            fiat_rate: "0.00033333",
-            min_sum_in: "0.00000100",
-            invoice_commission_percentage: "0.5",
-            hidden: 0,
-            maintenance: false,
-            contractOf: null,
-            contractStandard: null,
-            allowMemo: false,
-          },
-          {
-            name: "Litecoin",
-            cid: "LTC",
-            currency: "LTC",
-            icon: "https://plisio.net/img/psys-icon/LTC.svg",
-            rate_usd: "0.01",
-            price_usd: "100.00000000",
-            precision: 2,
-            output_precision: 2,
-            fiat: "USD",
-            fiat_rate: "0.01",
-            min_sum_in: "0.01000000",
-            invoice_commission_percentage: "0.5",
-            hidden: 0,
-            maintenance: false,
-            contractOf: null,
-            contractStandard: null,
-            allowMemo: false,
-          },
-        ];
-        setCurrencies(fallbackCurrencies);
-        setDisplayedCurrencies(fallbackCurrencies.slice(0, 6));
-        setSelectedCurrency("BTC");
+        // No fallback currencies - show empty state
+        setCurrencies([]);
+        setDisplayedCurrencies([]);
+        setSelectedCurrency("");
       }
     } catch (error) {
       console.error("Error loading currencies:", error);
@@ -321,7 +283,7 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
   // Handle show more currencies
   const handleShowMoreCurrencies = () => {
     if (showAllCurrencies) {
-      setDisplayedCurrencies(currencies.slice(0, 6));
+      setDisplayedCurrencies(currencies.slice(0, 4));
       setShowAllCurrencies(false);
     } else {
       setDisplayedCurrencies(currencies);
@@ -562,12 +524,12 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
                   )}
                   {paymentMethod === "crypto" && (
                     <div className="w-8 h-8 bg-orange-100 rounded flex items-center justify-center">
-                      <CreditCard className="w-4 h-4 text-orange-600" />
+                      <Coins className="w-4 h-4 text-orange-600" />
                     </div>
                   )}
                   {["mandiri", "bca", "bri", "bni"].includes(paymentMethod) && (
                     <div className="w-8 h-8 bg-green-100 rounded flex items-center justify-center">
-                      <Building2 className="w-4 h-4 text-green-600" />
+                      <CreditCard className="w-4 h-4 text-green-600" />
                     </div>
                   )}
                   <span className="font-medium">
@@ -584,7 +546,7 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
 
               <div className="flex-1 overflow-y-auto">
                 {/* Payment Group Buttons */}
-                <div className="grid grid-cols-3 gap-2 mb-6">
+                <div className="grid grid-cols-3 gap-2 mb-3">
                   <Button
                     variant={
                       selectedPaymentGroup === "qris" ? "default" : "outline"
@@ -602,7 +564,7 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
                     onClick={() => handlePaymentGroupSelect("crypto")}
                     className="flex flex-col items-center space-y-2 h-20"
                   >
-                    <CreditCard className="w-6 h-6" />
+                    <Coins className="w-6 h-6" />
                     <span className="text-xs">Crypto</span>
                   </Button>
                   <Button
@@ -612,7 +574,7 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
                     onClick={() => handlePaymentGroupSelect("bank")}
                     className="flex flex-col items-center space-y-2 h-20"
                   >
-                    <Building2 className="w-6 h-6" />
+                    <CreditCard className="w-6 h-6" />
                     <span className="text-xs">Bank</span>
                   </Button>
                 </div>
@@ -643,7 +605,7 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
                     }`}
                   >
                     <div className="space-y-3">
-                      <Label className="text-sm font-medium">
+                      <Label className="text-sm font-medium mb-5">
                         Select Cryptocurrency:
                       </Label>
 
@@ -656,38 +618,35 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
                         </div>
                       ) : displayedCurrencies.length > 0 ? (
                         <div className="space-y-3">
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-2 gap-2">
                             {displayedCurrencies.map((currency) => (
                               <Button
                                 key={currency.cid}
-                                variant={
-                                  selectedCurrency === currency.currency
-                                    ? "default"
-                                    : "outline"
-                                }
+                                variant="outline"
                                 onClick={() =>
                                   setSelectedCurrency(currency.currency)
                                 }
-                                className="flex flex-col items-center h-24 p-6"
+                                className={`flex flex-col items-center h-32 p-2 text-xs ${
+                                  selectedCurrency === currency.currency
+                                    ? "bg-yellow-50 border-yellow-400 text-yellow-800"
+                                    : "hover:bg-gray-50"
+                                }`}
                               >
-                                {currency.icon && (
-                                  <img
-                                    src={currency.icon}
-                                    alt={currency.name}
-                                    className="w-8 h-8"
-                                    onError={(e) => {
-                                      const target =
-                                        e.target as HTMLImageElement;
-                                      target.style.display = "none";
-                                    }}
-                                  />
-                                )}
+                                <img
+                                  src={currency.icon}
+                                  alt={currency.currency}
+                                  className="w-7 h-7"
+                                />
                                 <div className="text-center">
-                                  <div className="text-xs font-semibold">
+                                  <div className="font-semibold text-xs mb-1">
                                     {currency.currency}
                                   </div>
-                                  <div className="text-xs text-gray-500 truncate max-w-20">
-                                    {currency.name}
+                                  <div className="text-green-600 font-medium text-xs mb-1">
+                                    ${parseFloat(currency.price_usd).toFixed(2)}
+                                  </div>
+                                  <div className="text-gray-500 text-xs">
+                                    {currency.currency}{" "}
+                                    {parseFloat(currency.rate_usd).toFixed(8)}
                                   </div>
                                 </div>
                               </Button>
@@ -695,7 +654,7 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
                           </div>
 
                           {/* Show More/Less Button */}
-                          {currencies.length > 6 && (
+                          {currencies.length > 4 && (
                             <div className="text-center">
                               <Button
                                 variant="outline"
@@ -705,7 +664,7 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
                               >
                                 {showAllCurrencies
                                   ? "Show Less"
-                                  : `Show More (${currencies.length - 6} more)`}
+                                  : `Show More (${currencies.length - 4} more)`}
                               </Button>
                             </div>
                           )}
@@ -722,13 +681,19 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
                         <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
                           <div className="font-medium">Amount to pay:</div>
                           <div className="text-lg font-bold text-orange-600">
-                            {formatCryptoAmount(
-                              calculateCryptoAmount(
-                                totalAmount * 0.000065,
+                            {(() => {
+                              const currency = currencies.find(
+                                (c) => c.currency === selectedCurrency
+                              );
+                              if (!currency) return "0";
+                              const usdAmount = totalAmount * 0.000065;
+                              const cryptoAmount =
+                                usdAmount / parseFloat(currency.price_usd);
+                              return formatCryptoAmount(
+                                cryptoAmount,
                                 selectedCurrency
-                              ),
-                              selectedCurrency
-                            )}{" "}
+                              );
+                            })()}{" "}
                             {selectedCurrency}
                           </div>
                           <div className="text-xs text-gray-500">
@@ -745,7 +710,6 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
                       selectedPaymentGroup === "bank" ? "block" : "hidden"
                     }`}
                   >
-
                     <div className="space-y-2">
                       <Label className="text-sm font-medium">
                         Select Bank:
