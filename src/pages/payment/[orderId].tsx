@@ -378,6 +378,31 @@ const PaymentPage: React.FC = () => {
                     <span>Product Price</span>
                     <span>{formatRupiahWithSymbol(paymentData.amount)}</span>
                   </div>
+                  {paymentData.shipments &&
+                    paymentData.shipments.length > 0 && (
+                      <div className="space-y-1">
+                        <div className="flex justify-between">
+                          <span>Shipping Cost</span>
+                          <span>
+                            {formatRupiahWithSymbol(
+                              paymentData.shipments[0]?.cost || 0
+                            )}
+                          </span>
+                        </div>
+                        {paymentData.shipments[0]?.courier &&
+                          paymentData.shipments[0]?.service && (
+                            <div className="text-xs text-gray-500 text-right">
+                              {paymentData.shipments[0].courier.toUpperCase()} -{" "}
+                              {paymentData.shipments[0].service}
+                              {paymentData.shipments[0]?.etd && (
+                                <span className="ml-1">
+                                  ({paymentData.shipments[0].etd})
+                                </span>
+                              )}
+                            </div>
+                          )}
+                      </div>
+                    )}
                   <div className="flex justify-between">
                     <span>Admin Fee</span>
                     <span>{formatRupiahWithSymbol(paymentData.adminFee)}</span>

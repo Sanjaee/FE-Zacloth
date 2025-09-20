@@ -130,7 +130,22 @@ export default function ProductUpdateForm() {
         const { api } = await import("../../../../lib/api");
         const response = (await api.products.getById(id)) as any;
 
-        const product = response.product;
+        console.log("API Response:", response); // Debug log
+
+        // Check if response is successful and has data
+        if (!response.success) {
+          throw new Error(response.message || "Failed to fetch product");
+        }
+
+        const product = response.data || response.product;
+
+        // Check if product exists
+        if (!product) {
+          throw new Error("Product not found");
+        }
+
+        console.log("Product data:", product); // Debug log
+
         setFormData({
           isOnSale: product.isOnSale || false,
           isNikeByYou: product.isNikeByYou || false,
@@ -188,12 +203,30 @@ export default function ProductUpdateForm() {
         }
       } catch (error: any) {
         console.error("Error fetching product:", error);
+
+        let errorMessage = "Gagal mengambil data produk";
+
+        if (error.message) {
+          errorMessage = error.message;
+        } else if (error.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.response?.status === 404) {
+          errorMessage = "Produk tidak ditemukan";
+        } else if (error.response?.status === 403) {
+          errorMessage =
+            "Akses ditolak. Hanya admin yang dapat mengakses halaman ini.";
+        }
+
         toast({
           title: "Error",
-          description: "Gagal mengambil data produk",
+          description: errorMessage,
           variant: "destructive",
         });
-        router.push("/admin/product/update");
+
+        // Only redirect if it's not a 404 error (product not found)
+        if (error.response?.status !== 404) {
+          router.push("/admin/product/update");
+        }
       } finally {
         setInitialLoading(false);
       }
