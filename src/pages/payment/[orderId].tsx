@@ -11,6 +11,7 @@ import { api } from "@/lib/api-client";
 import { VirtualAccountDisplay } from "@/components/payment/VirtualAccountDisplay";
 import { QRCodeDisplay } from "@/components/payment/QRCodeDisplay";
 import { CryptoPaymentDisplay } from "@/components/payment/CryptoPaymentDisplay";
+import { CancelPaymentDialog } from "@/components/payment/CancelPaymentDialog";
 
 const PaymentPage: React.FC = () => {
   const router = useRouter();
@@ -22,6 +23,8 @@ const PaymentPage: React.FC = () => {
   const [isPolling, setIsPolling] = useState(false);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const hasShownSuccessToast = useRef(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => {
     if (orderId) {
@@ -164,6 +167,42 @@ const PaymentPage: React.FC = () => {
       title: "Copied!",
       description: `${label} copied to clipboard`,
     });
+  };
+
+  const handleCancelPayment = async () => {
+    if (!paymentData) return;
+
+    try {
+      setIsCancelling(true);
+
+      // Use unified API to cancel payment (same as checkout)
+      const response = (await api.unifiedPayments.cancelPayment(
+        paymentData.orderId
+      )) as any;
+
+      if (response.success) {
+        toast({
+          title: "Payment Cancelled",
+          description: "Your payment has been cancelled successfully.",
+        });
+
+        // Redirect to home page after successful cancellation
+        setTimeout(() => {
+          router.push("/");
+        }, 1500);
+      } else {
+        throw new Error(response.error || "Failed to cancel payment");
+      }
+    } catch (error: any) {
+      console.error("Error cancelling payment:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to cancel payment",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCancelling(false);
+    }
   };
 
   const getStatusIcon = (status: string) => {
@@ -463,13 +502,12 @@ const PaymentPage: React.FC = () => {
 
               {paymentData.status?.toLowerCase() === "pending" && (
                 <Button
-                  onClick={() =>
-                    api.unifiedPayments.cancelPayment(paymentData.orderId)
-                  }
+                  onClick={() => setShowCancelDialog(true)}
                   variant="destructive"
                   className="w-full"
+                  disabled={isCancelling}
                 >
-                  Cancel Payment
+                  {isCancelling ? "Cancelling..." : "Cancel Payment"}
                 </Button>
               )}
 
@@ -484,6 +522,15 @@ const PaymentPage: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Cancel Payment Confirmation Dialog */}
+        <CancelPaymentDialog
+          isOpen={showCancelDialog}
+          onOpenChange={setShowCancelDialog}
+          onConfirm={handleCancelPayment}
+          paymentData={paymentData}
+          isLoading={isCancelling}
+        />
       </div>
     </div>
   );
