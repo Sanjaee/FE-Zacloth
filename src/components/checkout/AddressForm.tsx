@@ -70,6 +70,16 @@ export const AddressForm: React.FC<AddressFormProps> = ({
   const [provincesLoaded, setProvincesLoaded] = useState(false);
   const [couriersLoaded, setCouriersLoaded] = useState(false);
 
+  // Debounce timers for select dialogs
+  const [provinceDebounceTimer, setProvinceDebounceTimer] =
+    useState<NodeJS.Timeout | null>(null);
+  const [cityDebounceTimer, setCityDebounceTimer] =
+    useState<NodeJS.Timeout | null>(null);
+  const [courierDebounceTimer, setCourierDebounceTimer] =
+    useState<NodeJS.Timeout | null>(null);
+  const [serviceDebounceTimer, setServiceDebounceTimer] =
+    useState<NodeJS.Timeout | null>(null);
+
   const [shippingData, setShippingData] = useState({
     origin: "501", // Default Yogyakarta
     weight: 1000, // Default 1kg
@@ -106,6 +116,21 @@ export const AddressForm: React.FC<AddressFormProps> = ({
     }
   }, [existingAddresses.length]);
 
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (serviceDebounceTimer) clearTimeout(serviceDebounceTimer);
+      if (provinceDebounceTimer) clearTimeout(provinceDebounceTimer);
+      if (cityDebounceTimer) clearTimeout(cityDebounceTimer);
+      if (courierDebounceTimer) clearTimeout(courierDebounceTimer);
+    };
+  }, [
+    serviceDebounceTimer,
+    provinceDebounceTimer,
+    cityDebounceTimer,
+    courierDebounceTimer,
+  ]);
+
   const [selectedCourier, setSelectedCourier] = useState<any>(null);
   const [availableServices, setAvailableServices] = useState<string[]>([]);
 
@@ -135,25 +160,45 @@ export const AddressForm: React.FC<AddressFormProps> = ({
     }
   };
 
-  // Load provinces when province dialog opens
+  // Load provinces when province dialog opens with debounce
   const handleProvinceDialogOpen = (open: boolean) => {
     setOpenProvince(open);
-    // Only fetch provinces when dialog is opened and not already loaded
+
     if (open && !provincesLoaded) {
-      fetchProvinces().then(() => setProvincesLoaded(true));
+      // Clear existing timer
+      if (provinceDebounceTimer) {
+        clearTimeout(provinceDebounceTimer);
+      }
+
+      // Set debounced timer
+      const timer = setTimeout(() => {
+        fetchProvinces().then(() => setProvincesLoaded(true));
+      }, 500); // 500ms debounce
+
+      setProvinceDebounceTimer(timer);
     }
   };
 
-  // Load couriers when courier dialog opens
+  // Load couriers when courier dialog opens with debounce
   const handleCourierDialogOpen = (open: boolean) => {
     setOpenCourier(open);
-    // Only fetch couriers when dialog is opened and not already loaded
+
     if (open && !couriersLoaded) {
-      fetchCouriers().then(() => setCouriersLoaded(true));
+      // Clear existing timer
+      if (courierDebounceTimer) {
+        clearTimeout(courierDebounceTimer);
+      }
+
+      // Set debounced timer
+      const timer = setTimeout(() => {
+        fetchCouriers().then(() => setCouriersLoaded(true));
+      }, 500); // 500ms debounce
+
+      setCourierDebounceTimer(timer);
     }
   };
 
-  // Handle city selection
+  // Handle city selection with debounce
   const handleCityChange = (cityId: string) => {
     const selectedCity = citiesSource.find((c) => c.id.toString() === cityId);
     if (selectedCity) {
@@ -163,8 +208,19 @@ export const AddressForm: React.FC<AddressFormProps> = ({
         cityName: selectedCity.name,
         postalCode: selectedCity.zip_code || "",
       }));
-      // Load districts for selected city
-      fetchDistricts(cityId);
+
+      // Clear existing timer
+      if (cityDebounceTimer) {
+        clearTimeout(cityDebounceTimer);
+      }
+
+      // Set debounced timer for loading districts
+      const timer = setTimeout(() => {
+        fetchDistricts(cityId);
+      }, 300); // 300ms debounce
+
+      setCityDebounceTimer(timer);
+
       // Reset destination until district selected
       setShippingData((prev) => ({ ...prev, destination: "" }));
     }
@@ -180,67 +236,79 @@ export const AddressForm: React.FC<AddressFormProps> = ({
         ...prev,
         courier: courierCode,
         service: "",
+        cost: undefined, // Reset cost when courier changes
       }));
     }
   };
 
-  // Handle service selection with auto-calculate
-  const handleServiceChange = async (service: string) => {
+  // Handle service selection with debounced auto-calculate
+  const handleServiceChange = (service: string) => {
     setShippingData((prev) => ({
       ...prev,
       service,
+      cost: undefined, // Reset cost to trigger skeleton
     }));
 
-    // Auto-calculate shipping cost when service is selected
-    if (shippingData.destination && shippingData.courier) {
-      try {
-        const result = await getShippingCost(
-          shippingData.origin,
-          shippingData.destination,
-          shippingData.weight,
-          shippingData.courier
-        );
+    // Clear existing timer
+    if (serviceDebounceTimer) {
+      clearTimeout(serviceDebounceTimer);
+    }
 
-        if (result && Array.isArray(result)) {
-          // Find the cost for the selected service
-          const selectedService = result.find(
-            (item: any) => item.code === shippingData.courier
+    // Set new debounced timer
+    const timer = setTimeout(async () => {
+      // Auto-calculate shipping cost when service is selected
+      if (shippingData.destination && shippingData.courier) {
+        try {
+          const result = await getShippingCost(
+            shippingData.origin,
+            shippingData.destination,
+            shippingData.weight,
+            shippingData.courier
           );
 
-          onShippingCalculate({
-            ...shippingData,
-            service: selectedService?.service || service,
-            cost: selectedService?.cost || 0,
-            etd: selectedService?.etd || "2-3 hari",
-          });
+          if (result && Array.isArray(result)) {
+            // Find the cost for the selected service
+            const selectedService = result.find(
+              (item: any) => item.code === shippingData.courier
+            );
 
-          toast({
-            title: "Success",
-            description: "Shipping cost calculated automatically",
-          });
-        }
-      } catch (err: any) {
-        console.error("Auto shipping cost error:", err);
+            onShippingCalculate({
+              ...shippingData,
+              service: selectedService?.service || service,
+              cost: selectedService?.cost || 0,
+              etd: selectedService?.etd || "2-3 hari",
+            });
 
-        // Handle specific error cases
-        if (
-          err.message?.includes("401") ||
-          err.message?.includes("Unauthorized")
-        ) {
-          toast({
-            title: "Authentication Error",
-            description: "Your session has expired. Please login again.",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Error",
-            description: "Failed to calculate shipping cost automatically.",
-            variant: "destructive",
-          });
+            toast({
+              title: "Success",
+              description: "Shipping cost calculated automatically",
+            });
+          }
+        } catch (err: any) {
+          console.error("Auto shipping cost error:", err);
+
+          // Handle specific error cases
+          if (
+            err.message?.includes("401") ||
+            err.message?.includes("Unauthorized")
+          ) {
+            toast({
+              title: "Authentication Error",
+              description: "Your session has expired. Please login again.",
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: "Error",
+              description: "Failed to calculate shipping cost automatically.",
+              variant: "destructive",
+            });
+          }
         }
       }
-    }
+    }, 1000); // 1 second debounce
+
+    setServiceDebounceTimer(timer);
   };
 
   // Handle district selection

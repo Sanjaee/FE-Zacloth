@@ -85,97 +85,106 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
   const adminFee = 1000; // Fixed admin fee of 1000
   const totalAmount = productPrice + shippingCost + adminFee;
 
-  // Load cryptocurrencies when component mounts
-  useEffect(() => {
-    const loadCurrencies = async () => {
-      try {
-        setLoadingCurrencies(true);
-        const response = (await api.crypto.getCurrencies()) as any;
+  // Track if currencies have been loaded
+  const [currenciesLoaded, setCurrenciesLoaded] = useState(false);
+  const [displayedCurrencies, setDisplayedCurrencies] = useState<Currency[]>(
+    []
+  );
+  const [showAllCurrencies, setShowAllCurrencies] = useState(false);
 
-        if (response.success) {
-          setCurrencies(response.data);
-          // Set default currency to BTC if available, otherwise first currency
-          const defaultCurrency =
-            response.data.find((c: Currency) => c.currency === "BTC")
-              ?.currency ||
-            response.data[0]?.currency ||
-            "BTC";
-          setSelectedCurrency(defaultCurrency);
-        } else {
-          // Fallback currencies if API fails
-          const fallbackCurrencies: Currency[] = [
-            {
-              name: "Bitcoin",
-              cid: "BTC",
-              currency: "BTC",
-              icon: "https://plisio.net/img/psys-icon/BTC.svg",
-              rate_usd: "0.0000084889643463497453311",
-              price_usd: "50000.00000000",
-              precision: 8,
-              output_precision: 8,
-              fiat: "USD",
-              fiat_rate: "0.00000848",
-              min_sum_in: "0.00000010",
-              invoice_commission_percentage: "0.5",
-              hidden: 0,
-              maintenance: false,
-              contractOf: null,
-              contractStandard: null,
-              allowMemo: false,
-            },
-            {
-              name: "Ethereum",
-              cid: "ETH",
-              currency: "ETH",
-              icon: "https://plisio.net/img/psys-icon/ETH.svg",
-              rate_usd: "0.0003333333333333333",
-              price_usd: "3000.00000000",
-              precision: 6,
-              output_precision: 6,
-              fiat: "USD",
-              fiat_rate: "0.00033333",
-              min_sum_in: "0.00000100",
-              invoice_commission_percentage: "0.5",
-              hidden: 0,
-              maintenance: false,
-              contractOf: null,
-              contractStandard: null,
-              allowMemo: false,
-            },
-            {
-              name: "Litecoin",
-              cid: "LTC",
-              currency: "LTC",
-              icon: "https://plisio.net/img/psys-icon/LTC.svg",
-              rate_usd: "0.01",
-              price_usd: "100.00000000",
-              precision: 2,
-              output_precision: 2,
-              fiat: "USD",
-              fiat_rate: "0.01",
-              min_sum_in: "0.01000000",
-              invoice_commission_percentage: "0.5",
-              hidden: 0,
-              maintenance: false,
-              contractOf: null,
-              contractStandard: null,
-              allowMemo: false,
-            },
-          ];
-          setCurrencies(fallbackCurrencies);
-          setSelectedCurrency("BTC");
-        }
-      } catch (error) {
-        console.error("Error loading currencies:", error);
-        setCurrencies([]);
-        setSelectedCurrency("");
-      } finally {
-        setLoadingCurrencies(false);
+  // Load cryptocurrencies only when crypto dialog is opened
+  const loadCurrencies = async () => {
+    if (currenciesLoaded) return; // Don't load if already loaded
+
+    try {
+      setLoadingCurrencies(true);
+      const response = (await api.crypto.getCurrencies()) as any;
+
+      if (response.success) {
+        setCurrencies(response.data);
+        // Show only first 6 currencies initially
+        setDisplayedCurrencies(response.data.slice(0, 6));
+        // Set default currency to BTC if available, otherwise first currency
+        const defaultCurrency =
+          response.data.find((c: Currency) => c.currency === "BTC")?.currency ||
+          response.data[0]?.currency ||
+          "BTC";
+        setSelectedCurrency(defaultCurrency);
+      } else {
+        // Fallback currencies if API fails
+        const fallbackCurrencies: Currency[] = [
+          {
+            name: "Bitcoin",
+            cid: "BTC",
+            currency: "BTC",
+            icon: "https://plisio.net/img/psys-icon/BTC.svg",
+            rate_usd: "0.0000084889643463497453311",
+            price_usd: "50000.00000000",
+            precision: 8,
+            output_precision: 8,
+            fiat: "USD",
+            fiat_rate: "0.00000848",
+            min_sum_in: "0.00000010",
+            invoice_commission_percentage: "0.5",
+            hidden: 0,
+            maintenance: false,
+            contractOf: null,
+            contractStandard: null,
+            allowMemo: false,
+          },
+          {
+            name: "Ethereum",
+            cid: "ETH",
+            currency: "ETH",
+            icon: "https://plisio.net/img/psys-icon/ETH.svg",
+            rate_usd: "0.0003333333333333333",
+            price_usd: "3000.00000000",
+            precision: 6,
+            output_precision: 6,
+            fiat: "USD",
+            fiat_rate: "0.00033333",
+            min_sum_in: "0.00000100",
+            invoice_commission_percentage: "0.5",
+            hidden: 0,
+            maintenance: false,
+            contractOf: null,
+            contractStandard: null,
+            allowMemo: false,
+          },
+          {
+            name: "Litecoin",
+            cid: "LTC",
+            currency: "LTC",
+            icon: "https://plisio.net/img/psys-icon/LTC.svg",
+            rate_usd: "0.01",
+            price_usd: "100.00000000",
+            precision: 2,
+            output_precision: 2,
+            fiat: "USD",
+            fiat_rate: "0.01",
+            min_sum_in: "0.01000000",
+            invoice_commission_percentage: "0.5",
+            hidden: 0,
+            maintenance: false,
+            contractOf: null,
+            contractStandard: null,
+            allowMemo: false,
+          },
+        ];
+        setCurrencies(fallbackCurrencies);
+        setDisplayedCurrencies(fallbackCurrencies.slice(0, 6));
+        setSelectedCurrency("BTC");
       }
-    };
-
-    loadCurrencies();
-  }, []);
+    } catch (error) {
+      console.error("Error loading currencies:", error);
+      setCurrencies([]);
+      setDisplayedCurrencies([]);
+      setSelectedCurrency("");
+    } finally {
+      setLoadingCurrencies(false);
+      setCurrenciesLoaded(true);
+    }
+  };
 
   // Helper function to calculate crypto amount based on USD amount and currency price
   const calculateCryptoAmount = (
@@ -226,6 +235,68 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
     return methodNames[method] || method;
   };
 
+  // Debounce timer for crypto loading
+  const [cryptoDebounceTimer, setCryptoDebounceTimer] =
+    useState<NodeJS.Timeout | null>(null);
+
+  // Loading state for shipping cost calculation
+  const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (cryptoDebounceTimer) clearTimeout(cryptoDebounceTimer);
+    };
+  }, [cryptoDebounceTimer]);
+
+  // Monitor shipping data changes for loading state
+  useEffect(() => {
+    console.log("Shipping data changed:", shippingData);
+    console.log("Current calculating state:", isCalculatingShipping);
+
+    // Show skeleton when service is selected but we're waiting for cost calculation
+    if (
+      shippingData?.service &&
+      (shippingData?.cost === undefined || shippingData?.cost === 0)
+    ) {
+      // Check if we have all required data for calculation
+      if (shippingData?.destination && shippingData?.courier) {
+        console.log("Setting calculating to true");
+        setIsCalculatingShipping(true);
+      }
+    } else if (shippingData?.cost && shippingData?.cost > 0) {
+      // Cost is calculated and has a value
+      console.log("Setting calculating to false");
+      setIsCalculatingShipping(false);
+    }
+  }, [shippingData]);
+
+  // Skeleton component for cost breakdown
+  const CostBreakdownSkeleton = () => (
+    <div className="space-y-2">
+      <div className="flex justify-between">
+        <span>Product Price</span>
+        <span>{formatRupiahWithSymbol(productPrice)}</span>
+      </div>
+      <div className="flex justify-between">
+        <span>Shipping Cost</span>
+        <div className="flex items-center space-x-2">
+          <div className="animate-pulse bg-gray-200 h-4 w-16 rounded"></div>
+          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+        </div>
+      </div>
+      <div className="flex justify-between">
+        <span>Admin Fee</span>
+        <span>{formatRupiahWithSymbol(adminFee)}</span>
+      </div>
+      <Separator />
+      <div className="flex justify-between font-semibold text-lg">
+        <span>Total Amount</span>
+        <div className="animate-pulse bg-gray-200 h-5 w-20 rounded"></div>
+      </div>
+    </div>
+  );
+
   // Handle payment group selection
   const handlePaymentGroupSelect = (group: "qris" | "crypto" | "bank") => {
     setSelectedPaymentGroup(group);
@@ -233,8 +304,33 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
       setPaymentMethod("gopay");
     } else if (group === "crypto") {
       setPaymentMethod("crypto");
+      // Load currencies when crypto is selected with debounce
+      if (!currenciesLoaded) {
+        // Clear existing timer
+        if (cryptoDebounceTimer) {
+          clearTimeout(cryptoDebounceTimer);
+        }
+
+        // Set debounced timer
+        const timer = setTimeout(() => {
+          loadCurrencies();
+        }, 800); // 800ms debounce
+
+        setCryptoDebounceTimer(timer);
+      }
     } else if (group === "bank") {
       setPaymentMethod(selectedBank);
+    }
+  };
+
+  // Handle show more currencies
+  const handleShowMoreCurrencies = () => {
+    if (showAllCurrencies) {
+      setDisplayedCurrencies(currencies.slice(0, 6));
+      setShowAllCurrencies(false);
+    } else {
+      setDisplayedCurrencies(currencies);
+      setShowAllCurrencies(true);
     }
   };
 
@@ -526,9 +622,14 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
                   </Button>
                 </div>
 
-                {/* Dynamic Content Based on Selection */}
-                {selectedPaymentGroup === "qris" && (
-                  <div className="space-y-4">
+                {/* Dynamic Content Based on Selection - Pure Render */}
+                <div className="space-y-4">
+                  {/* QRIS Content */}
+                  <div
+                    className={`space-y-4 transition-opacity duration-200 ${
+                      selectedPaymentGroup === "qris" ? "block" : "hidden"
+                    }`}
+                  >
                     <div className="text-center p-4 bg-blue-50 rounded-lg">
                       <QrCode className="w-12 h-12 text-blue-600 mx-auto mb-2" />
                       <h3 className="font-semibold text-blue-900">
@@ -539,10 +640,13 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
                       </p>
                     </div>
                   </div>
-                )}
 
-                {selectedPaymentGroup === "crypto" && (
-                  <div className="space-y-4">
+                  {/* Crypto Content */}
+                  <div
+                    className={`space-y-4 transition-opacity duration-200 ${
+                      selectedPaymentGroup === "crypto" ? "block" : "hidden"
+                    }`}
+                  >
                     <div className="space-y-3">
                       <Label className="text-sm font-medium">
                         Select Cryptocurrency:
@@ -555,42 +659,61 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
                             Loading currencies...
                           </p>
                         </div>
-                      ) : currencies.length > 0 ? (
-                        <div className="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto">
-                          {currencies.map((currency) => (
-                            <Button
-                              key={currency.cid}
-                              variant={
-                                selectedCurrency === currency.currency
-                                  ? "default"
-                                  : "outline"
-                              }
-                              onClick={() =>
-                                setSelectedCurrency(currency.currency)
-                              }
-                              className="flex flex-col items-center h-24 p-6"
-                            >
-                              {currency.icon && (
-                                <img
-                                  src={currency.icon}
-                                  alt={currency.name}
-                                  className="w-8 h-8"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.style.display = "none";
-                                  }}
-                                />
-                              )}
-                              <div className="text-center">
-                                <div className="text-xs font-semibold">
-                                  {currency.currency}
+                      ) : displayedCurrencies.length > 0 ? (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            {displayedCurrencies.map((currency) => (
+                              <Button
+                                key={currency.cid}
+                                variant={
+                                  selectedCurrency === currency.currency
+                                    ? "default"
+                                    : "outline"
+                                }
+                                onClick={() =>
+                                  setSelectedCurrency(currency.currency)
+                                }
+                                className="flex flex-col items-center h-24 p-6"
+                              >
+                                {currency.icon && (
+                                  <img
+                                    src={currency.icon}
+                                    alt={currency.name}
+                                    className="w-8 h-8"
+                                    onError={(e) => {
+                                      const target =
+                                        e.target as HTMLImageElement;
+                                      target.style.display = "none";
+                                    }}
+                                  />
+                                )}
+                                <div className="text-center">
+                                  <div className="text-xs font-semibold">
+                                    {currency.currency}
+                                  </div>
+                                  <div className="text-xs text-gray-500 truncate max-w-20">
+                                    {currency.name}
+                                  </div>
                                 </div>
-                                <div className="text-xs text-gray-500 truncate max-w-20">
-                                  {currency.name}
-                                </div>
-                              </div>
-                            </Button>
-                          ))}
+                              </Button>
+                            ))}
+                          </div>
+
+                          {/* Show More/Less Button */}
+                          {currencies.length > 6 && (
+                            <div className="text-center">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleShowMoreCurrencies}
+                                className="text-xs"
+                              >
+                                {showAllCurrencies
+                                  ? "Show Less"
+                                  : `Show More (${currencies.length - 6} more)`}
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="text-center py-4 text-gray-500">
@@ -620,10 +743,13 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
                       )}
                     </div>
                   </div>
-                )}
 
-                {selectedPaymentGroup === "bank" && (
-                  <div className="space-y-4">
+                  {/* Bank Content */}
+                  <div
+                    className={`space-y-4 transition-opacity duration-200 ${
+                      selectedPaymentGroup === "bank" ? "block" : "hidden"
+                    }`}
+                  >
                     <div className="text-center p-4 bg-green-50 rounded-lg mb-4">
                       <Building2 className="w-12 h-12 text-green-600 mx-auto mb-2" />
                       <h3 className="font-semibold text-green-900">
@@ -717,7 +843,7 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
                       </RadioGroup>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
 
               {/* Dialog Actions */}
@@ -740,33 +866,50 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
         <Separator />
 
         {/* Cost Breakdown */}
-        <div className="space-y-2">
-          <div className="flex justify-between">
-            <span>Product Price</span>
-            <span>{formatRupiahWithSymbol(productPrice)}</span>
+        {console.log(
+          "Rendering cost breakdown, isCalculatingShipping:",
+          isCalculatingShipping
+        )}
+        {isCalculatingShipping ? (
+          <CostBreakdownSkeleton />
+        ) : (
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <span>Product Price</span>
+              <span>{formatRupiahWithSymbol(productPrice)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Shipping Cost</span>
+              <span>{formatRupiahWithSymbol(shippingCost)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Admin Fee</span>
+              <span>{formatRupiahWithSymbol(adminFee)}</span>
+            </div>
+            <Separator />
+            <div className="flex justify-between font-semibold text-lg">
+              <span>Total Amount</span>
+              <span>{formatRupiahWithSymbol(totalAmount)}</span>
+            </div>
           </div>
-          <div className="flex justify-between">
-            <span>Shipping Cost</span>
-            <span>{formatRupiahWithSymbol(shippingCost)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Admin Fee</span>
-            <span>{formatRupiahWithSymbol(adminFee)}</span>
-          </div>
-          <Separator />
-          <div className="flex justify-between font-semibold text-lg">
-            <span>Total Amount</span>
-            <span>{formatRupiahWithSymbol(totalAmount)}</span>
-          </div>
-        </div>
+        )}
 
         <Button
           onClick={handlePayment}
-          disabled={!addressData || !shippingData || isProcessing}
+          disabled={
+            !addressData ||
+            !shippingData ||
+            isProcessing ||
+            isCalculatingShipping
+          }
           className="w-full"
           size="lg"
         >
-          {isProcessing ? "Processing Payment..." : "Pay Now"}
+          {isProcessing
+            ? "Processing Payment..."
+            : isCalculatingShipping
+            ? "Calculating..."
+            : "Pay Now"}
         </Button>
 
         <p className="text-xs text-gray-500 text-center">
