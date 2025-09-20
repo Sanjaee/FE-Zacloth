@@ -123,17 +123,14 @@ export const useRajaOngkir = () => {
     origin: string,
     destination: string,
     weight: number,
-    courier: string,
-    isAuthenticated: boolean = false
+    courier: string
   ) => {
     try {
       setLoading(true);
       setError(null);
 
-      // Use guest route if not authenticated
-      const endpoint = isAuthenticated
-        ? "/rajaongkir/cost"
-        : "/rajaongkir/cost-guest";
+      // All RajaOngkir endpoints now require authentication
+      const endpoint = "/rajaongkir/cost";
 
       const data = await apiClient.post<any>(endpoint, {
         origin,

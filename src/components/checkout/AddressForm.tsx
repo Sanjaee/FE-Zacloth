@@ -194,24 +194,23 @@ export const AddressForm: React.FC<AddressFormProps> = ({
       return;
     }
 
-    // Allow guest users to calculate shipping cost
-    // if (!session) {
-    //   toast({
-    //     title: "Authentication Required",
-    //     description: "Please login to calculate shipping cost",
-    //     variant: "destructive",
-    //   });
-    //   router.push("/login");
-    //   return;
-    // }
+    // All RajaOngkir endpoints now require authentication
+    if (!session) {
+      toast({
+        title: "Authentication Required",
+        description: "Please login to calculate shipping cost",
+        variant: "destructive",
+      });
+      router.push("/login");
+      return;
+    }
 
     try {
       const result = await getShippingCost(
         shippingData.origin,
         shippingData.destination,
         shippingData.weight,
-        shippingData.courier,
-        !!session // Pass authentication status
+        shippingData.courier
       );
 
       if (result && Array.isArray(result)) {
@@ -455,7 +454,6 @@ export const AddressForm: React.FC<AddressFormProps> = ({
 
   // Start editing address
   const handleEditAddress = (address: any) => {
-
     setEditingAddress(address);
     setIsEditing(true);
     setShowAddressForm(true);

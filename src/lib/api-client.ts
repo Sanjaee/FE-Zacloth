@@ -212,8 +212,6 @@ export const api = {
       apiClient.get(`/rajaongkir/districts/${cityId}`),
     getCouriers: () => apiClient.get("/rajaongkir/couriers"),
     getCost: (costData: any) => apiClient.post("/rajaongkir/cost", costData),
-    getCostGuest: (costData: any) =>
-      apiClient.post("/rajaongkir/cost-guest", costData),
     // Address endpoints
     getAddresses: () => apiClient.get("/rajaongkir/addresses"),
     createAddress: (addressData: any) =>
