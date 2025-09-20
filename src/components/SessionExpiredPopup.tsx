@@ -1,6 +1,7 @@
 import React from "react";
 import { useSession, signIn } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
 import {
   Dialog,
   DialogContent,
@@ -20,11 +21,16 @@ const SessionExpiredPopup: React.FC<SessionExpiredPopupProps> = ({
   onClose,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   const handleSignIn = async () => {
     setIsLoading(true);
     try {
-      await signIn("google", { callbackUrl: "/" });
+      // Get current page URL to redirect back after login
+      const currentPath = router.asPath;
+      const callbackUrl = currentPath === "/" ? "/dashboard" : currentPath;
+
+      await signIn("google", { callbackUrl });
     } catch (error) {
       // Sign in error
     } finally {
