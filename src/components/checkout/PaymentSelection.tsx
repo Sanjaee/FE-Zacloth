@@ -24,13 +24,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Smartphone,
-  Building2,
-  QrCode,
-  Coins,
-  CreditCard,
-} from "lucide-react";
+import { Smartphone, Building2, QrCode, Coins, CreditCard } from "lucide-react";
 
 interface PaymentSelectionProps {
   productData: {
@@ -213,17 +207,20 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
 
   // Monitor shipping data changes for loading state
   useEffect(() => {
-    // Show skeleton when service is selected but we're waiting for cost calculation
+    // Show skeleton when we have shipping service but no cost yet
     if (
       shippingData?.service &&
-      (shippingData?.cost === undefined || shippingData?.cost === 0)
+      (shippingData?.cost === undefined || shippingData?.cost === null)
     ) {
-      // Check if we have all required data for calculation
-      if (shippingData?.destination && shippingData?.courier) {
-        setIsCalculatingShipping(true);
-      }
-    } else if (shippingData?.cost && shippingData?.cost > 0) {
-      // Cost is calculated and has a value
+      setIsCalculatingShipping(true);
+    } else if (
+      shippingData?.cost !== undefined &&
+      shippingData?.cost !== null
+    ) {
+      // Cost is calculated (even if it's 0)
+      setIsCalculatingShipping(false);
+    } else if (!shippingData?.service) {
+      // No service selected, not calculating
       setIsCalculatingShipping(false);
     }
   }, [shippingData]);
@@ -249,7 +246,10 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
       <Separator />
       <div className="flex justify-between font-semibold text-lg">
         <span>Total Amount</span>
-        <div className="animate-pulse bg-gray-200 h-5 w-20 rounded"></div>
+        <div className="flex items-center space-x-2">
+          <div className="animate-pulse bg-gray-200 h-5 w-20 rounded"></div>
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+        </div>
       </div>
     </div>
   );

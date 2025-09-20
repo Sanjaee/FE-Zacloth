@@ -297,6 +297,26 @@ export const AddressForm: React.FC<AddressFormProps> = ({
               description: "Your session has expired. Please login again.",
               variant: "destructive",
             });
+          } else if (
+            err.response?.data?.error === "SHIPPING_SERVICE_UNAVAILABLE"
+          ) {
+            toast({
+              title: "Shipping Service Unavailable",
+              description:
+                err.response.data.message ||
+                "The selected courier service is not available for this destination. Please try a different courier or service.",
+              variant: "destructive",
+            });
+          } else if (
+            err.response?.data?.error === "SHIPPING_CALCULATION_FAILED"
+          ) {
+            toast({
+              title: "Shipping Calculation Failed",
+              description:
+                err.response.data.message ||
+                "Failed to calculate shipping cost. Please try again.",
+              variant: "destructive",
+            });
           } else {
             toast({
               title: "Error",
@@ -396,6 +416,22 @@ export const AddressForm: React.FC<AddressFormProps> = ({
           variant: "destructive",
         });
         router.push("/login");
+      } else if (err.response?.data?.error === "SHIPPING_SERVICE_UNAVAILABLE") {
+        toast({
+          title: "Shipping Service Unavailable",
+          description:
+            err.response.data.message ||
+            "The selected courier service is not available for this destination. Please try a different courier or service.",
+          variant: "destructive",
+        });
+      } else if (err.response?.data?.error === "SHIPPING_CALCULATION_FAILED") {
+        toast({
+          title: "Shipping Calculation Failed",
+          description:
+            err.response.data.message ||
+            "Failed to calculate shipping cost. Please try again.",
+          variant: "destructive",
+        });
       } else {
         toast({
           title: "Error",

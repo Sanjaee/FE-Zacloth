@@ -87,7 +87,7 @@ export const useProduct = (
         const response = await fetch(`${backendUrl}${endpoint}`);
 
         if (!response.ok) {
-          if (response.status === 404) {
+          if (response.status === 400) {
             setError("Produk tidak ditemukan");
           } else {
             setError("Gagal memuat produk");
