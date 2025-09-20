@@ -10,23 +10,26 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Clock, X, ExternalLink } from "lucide-react";
+import { Clock, X, ExternalLink, Coins, CreditCard } from "lucide-react";
 import { formatRupiahWithSymbol } from "@/utils/currencyFormatter";
 import { useToast } from "@/hooks/use-toast";
 
-interface PendingPaymentDialogProps {
+interface UnifiedPendingPaymentDialogProps {
   isOpen: boolean;
-  onClose: () => void;
   pendingPayment: any;
   onCancelPayment: (orderId: string) => Promise<void>;
   onRedirectToPayment: (orderId: string) => void;
+  onRedirectToInvoice?: (invoiceUrl: string) => void;
 }
 
-export const PendingPaymentDialog: React.FC<PendingPaymentDialogProps> = ({
+export const UnifiedPendingPaymentDialog: React.FC<
+  UnifiedPendingPaymentDialogProps
+> = ({
   isOpen,
   pendingPayment,
   onCancelPayment,
   onRedirectToPayment,
+  onRedirectToInvoice,
 }) => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(false);
@@ -54,22 +57,43 @@ export const PendingPaymentDialog: React.FC<PendingPaymentDialogProps> = ({
 
   const handleRedirectToPayment = () => {
     if (!pendingPayment) return;
-    onRedirectToPayment(pendingPayment.orderId);
+
+    if (
+      pendingPayment.paymentType === "plisio" &&
+      pendingPayment.snapRedirectUrl &&
+      onRedirectToInvoice
+    ) {
+      // For Plisio payments, redirect to invoice URL
+      onRedirectToInvoice(pendingPayment.snapRedirectUrl);
+    } else {
+      // For Midtrans payments, redirect to payment page
+      onRedirectToPayment(pendingPayment.orderId);
+    }
   };
 
   if (!pendingPayment) return null;
+
+  const isPlisioPayment = pendingPayment.paymentType === "plisio";
+  const isMidtransPayment = pendingPayment.paymentType === "midtrans";
 
   return (
     <Dialog open={isOpen} onOpenChange={() => {}}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
-            <Clock className="h-5 w-5 text-yellow-500" />
-            <span>Pending Payment Found</span>
+            {isPlisioPayment ? (
+              <Coins className="h-5 w-5 text-orange-500" />
+            ) : (
+              <CreditCard className="h-5 w-5 text-blue-500" />
+            )}
+            <span>
+              {isPlisioPayment ? "Crypto Payment Pending" : "Payment Pending"}
+            </span>
           </DialogTitle>
           <DialogDescription>
-            You have a pending payment for this product. Please complete or
-            cancel the existing payment before creating a new one.
+            You have a pending {isPlisioPayment ? "crypto" : ""} payment for
+            this product. Complete your payment or cancel it before creating a
+            new one.
           </DialogDescription>
         </DialogHeader>
 
@@ -125,9 +149,27 @@ export const PendingPaymentDialog: React.FC<PendingPaymentDialogProps> = ({
 
                 <div className="flex justify-between items-center">
                   <span className="text-sm">Payment Method</span>
-                  <span className="text-sm capitalize">
+                  <span className="text-sm capitalize flex items-center">
+                    {isPlisioPayment ? (
+                      <Coins className="h-3 w-3 mr-1" />
+                    ) : (
+                      <CreditCard className="h-3 w-3 mr-1" />
+                    )}
                     {pendingPayment.paymentMethod?.replace("_", " ")}
                   </span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">Payment Type</span>
+                  <Badge
+                    className={
+                      isPlisioPayment
+                        ? "bg-orange-100 text-orange-800"
+                        : "bg-blue-100 text-blue-800"
+                    }
+                  >
+                    {pendingPayment.paymentType?.toUpperCase()}
+                  </Badge>
                 </div>
 
                 <div className="flex justify-between items-center">
@@ -148,7 +190,7 @@ export const PendingPaymentDialog: React.FC<PendingPaymentDialogProps> = ({
               variant="default"
             >
               <ExternalLink className="h-4 w-4 mr-2" />
-              Go to Payment
+              {isPlisioPayment ? "Go to Invoice" : "Go to Payment"}
             </Button>
             <Button
               onClick={handleCancelPayment}
@@ -159,6 +201,41 @@ export const PendingPaymentDialog: React.FC<PendingPaymentDialogProps> = ({
               <X className="h-4 w-4 mr-2" />
               {isLoading ? "Cancelling..." : "Cancel Payment"}
             </Button>
+          </div>
+
+          {/* Info Box */}
+          <div
+            className={`border rounded-lg p-3 ${
+              isPlisioPayment
+                ? "bg-orange-50 border-orange-200"
+                : "bg-blue-50 border-blue-200"
+            }`}
+          >
+            <div className="flex items-start space-x-2">
+              {isPlisioPayment ? (
+                <Coins className="h-4 w-4 text-orange-600 mt-0.5" />
+              ) : (
+                <CreditCard className="h-4 w-4 text-blue-600 mt-0.5" />
+              )}
+              <div
+                className={`text-sm ${
+                  isPlisioPayment ? "text-orange-800" : "text-blue-800"
+                }`}
+              >
+                <p className="font-medium">
+                  {isPlisioPayment ? "Crypto Payment" : "Traditional Payment"}
+                </p>
+                <p
+                  className={
+                    isPlisioPayment ? "text-orange-600" : "text-blue-600"
+                  }
+                >
+                  {isPlisioPayment
+                    ? "Click 'Go to Invoice' to complete your crypto payment using the provided invoice URL."
+                    : "Click 'Go to Payment' to complete your payment using the payment page."}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </DialogContent>

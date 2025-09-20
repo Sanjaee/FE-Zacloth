@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { AddressForm } from "@/components/checkout/AddressForm";
 import { PaymentSelection } from "@/components/checkout/PaymentSelection";
-import { PendingPaymentDialog } from "@/components/checkout/PendingPaymentDialog";
+import { UnifiedPendingPaymentDialog } from "@/components/checkout/UnifiedPendingPaymentDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -57,10 +57,21 @@ const CheckoutPage: React.FC = () => {
     const checkPendingPayment = async () => {
       try {
         setCheckingPendingPayment(true);
+
+        // Check for regular payments (midtrans)
         const response = (await api.payments.getPendingPayment()) as any;
         if (response.success && response.data) {
           setPendingPayment(response.data);
           setShowPendingDialog(true);
+        }
+
+        // Check for Plisio payments if no midtrans payment found
+        if (!response.success || !response.data) {
+          const plisioResponse = (await api.crypto.getPendingPayment()) as any;
+          if (plisioResponse.success && plisioResponse.data) {
+            setPendingPayment(plisioResponse.data);
+            setShowPendingDialog(true);
+          }
         }
       } catch (error) {
         console.error("Error checking pending payment:", error);
@@ -143,9 +154,14 @@ const CheckoutPage: React.FC = () => {
     setShippingData(data);
   };
 
-  const handleCancelPayment = async (orderId: string) => {
+  const handleUnifiedCancelPayment = async (orderId: string) => {
     try {
-      const response = (await api.payments.cancelPayment(orderId)) as any;
+      // Determine which API to use based on payment type
+      const isPlisioPayment = pendingPayment?.paymentType === "plisio";
+      const response = isPlisioPayment
+        ? ((await api.crypto.cancelPayment(orderId)) as any)
+        : ((await api.payments.cancelPayment(orderId)) as any);
+
       if (response.success) {
         setPendingPayment(null);
         setShowPendingDialog(false);
@@ -161,8 +177,17 @@ const CheckoutPage: React.FC = () => {
     }
   };
 
-  const handleRedirectToPayment = (orderId: string) => {
-    router.push(`/payment/${orderId}`);
+  const handleUnifiedRedirectToPayment = (orderId: string) => {
+    if (
+      pendingPayment?.paymentType === "plisio" &&
+      pendingPayment?.snapRedirectUrl
+    ) {
+      // For Plisio payments, redirect to invoice URL
+      window.open(pendingPayment.snapRedirectUrl, "_blank");
+    } else {
+      // For Midtrans payments, redirect to payment page
+      router.push(`/payment/${orderId}`);
+    }
   };
 
   if (!productData) {
@@ -191,13 +216,12 @@ const CheckoutPage: React.FC = () => {
           </Button>
         </div>
 
-        {/* Pending Payment Dialog */}
-        <PendingPaymentDialog
+        {/* Unified Pending Payment Dialog */}
+        <UnifiedPendingPaymentDialog
           isOpen={showPendingDialog}
-          onClose={() => {}}
           pendingPayment={pendingPayment}
-          onCancelPayment={handleCancelPayment}
-          onRedirectToPayment={handleRedirectToPayment}
+          onCancelPayment={handleUnifiedCancelPayment}
+          onRedirectToPayment={handleUnifiedRedirectToPayment}
         />
 
         {/* Main Content */}
