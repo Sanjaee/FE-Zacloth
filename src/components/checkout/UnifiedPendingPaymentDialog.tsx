@@ -91,7 +91,6 @@ export const UnifiedPendingPaymentDialog: React.FC<
 
   const isPlisioPayment = pendingPayment.paymentType === "plisio";
   const isMidtransPayment = pendingPayment.paymentType === "midtrans";
-  console.log(pendingPayment);
 
   return (
     <>
