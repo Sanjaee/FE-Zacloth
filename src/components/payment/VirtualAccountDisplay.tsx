@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Copy, CreditCard, Clock } from "lucide-react";
+import { Copy, CreditCard, Clock, CheckCircle } from "lucide-react";
 import { formatRupiahWithSymbol } from "@/utils/currencyFormatter";
 
 interface VirtualAccountDisplayProps {
@@ -29,8 +29,18 @@ export const VirtualAccountDisplay: React.FC<VirtualAccountDisplayProps> = ({
       })()
     : null;
 
-  // Countdown timer for expiry_time
+  // Countdown timer for expiry_time (only for pending payments)
   useEffect(() => {
+    // Don't show countdown if payment is successful
+    if (
+      paymentData?.status?.toLowerCase() === "success" ||
+      paymentData?.status?.toLowerCase() === "settlement" ||
+      paymentData?.status?.toLowerCase() === "capture"
+    ) {
+      setCountdown("");
+      return;
+    }
+
     if (!midtransResponse?.expiry_time) {
       setCountdown("");
       return;
@@ -55,7 +65,7 @@ export const VirtualAccountDisplay: React.FC<VirtualAccountDisplayProps> = ({
     updateCountdown();
     const interval = setInterval(updateCountdown, 1000);
     return () => clearInterval(interval);
-  }, [midtransResponse?.expiry_time]);
+  }, [midtransResponse?.expiry_time, paymentData?.status]);
   const getBankInfo = (bankType: string) => {
     switch (bankType?.toLowerCase()) {
       case "bca":
@@ -142,21 +152,36 @@ export const VirtualAccountDisplay: React.FC<VirtualAccountDisplayProps> = ({
           </div>
         </div>
 
-        {/* Expiry Warning */}
-        {midtransResponse?.expiry_time && (
-          <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
+        {/* Payment Status Messages */}
+        {paymentData?.status?.toLowerCase() === "success" ||
+        paymentData?.status?.toLowerCase() === "settlement" ||
+        paymentData?.status?.toLowerCase() === "capture" ? (
+          <div className="bg-green-50 border border-green-200 p-3 rounded-lg">
             <div className="flex items-center space-x-2">
-              <Clock className="h-4 w-4 text-yellow-600" />
-              <span className="text-sm text-yellow-800">
-                <strong>Valid until:</strong> {midtransResponse.expiry_time}
-                {countdown && (
-                  <div className="text-xs text-red-400 mt-1 font-mono">
-                    Time remaining: {countdown}
-                  </div>
-                )}
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <span className="text-sm text-green-800">
+                <strong>Payment Successful!</strong> Your payment has been
+                processed and confirmed.
               </span>
             </div>
           </div>
+        ) : (
+          /* Expiry Warning for pending payments */
+          midtransResponse?.expiry_time && (
+            <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <Clock className="h-4 w-4 text-yellow-600" />
+                <span className="text-sm text-yellow-800">
+                  <strong>Valid until:</strong> {midtransResponse.expiry_time}
+                  {countdown && (
+                    <div className="text-xs text-red-400 mt-1 font-mono">
+                      Time remaining: {countdown}
+                    </div>
+                  )}
+                </span>
+              </div>
+            </div>
+          )
         )}
       </CardContent>
     </Card>

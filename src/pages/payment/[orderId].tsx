@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,9 @@ const PaymentPage: React.FC = () => {
   const [paymentData, setPaymentData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isPolling, setIsPolling] = useState(false);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const hasShownSuccessToast = useRef(false);
 
   useEffect(() => {
     if (orderId) {
@@ -26,15 +29,55 @@ const PaymentPage: React.FC = () => {
     }
   }, [orderId]);
 
-  const fetchPaymentStatus = async () => {
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, []);
+
+  const fetchPaymentStatus = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
       const response = (await api.unifiedPayments.getPaymentStatus(
         orderId as string
       )) as any;
 
       if (response.success) {
-        setPaymentData(response.data);
+        const newPaymentData = response.data;
+        setPaymentData(newPaymentData);
+
+        // Check if payment is successful and show toast
+        if (
+          isPaymentSuccessful(newPaymentData.status) &&
+          !hasShownSuccessToast.current
+        ) {
+          hasShownSuccessToast.current = true;
+          toast({
+            title: "Payment Successful! 🎉",
+            description: "Your payment has been processed successfully.",
+            duration: 5000,
+          });
+
+          // Stop polling when payment is successful
+          stopPolling();
+        }
+
+        // Start polling if payment is still pending and not too old
+        if (isPaymentPending(newPaymentData.status) && !isPolling) {
+          const paymentAge =
+            Date.now() - new Date(newPaymentData.createdAt).getTime();
+          const maxAge = 30 * 60 * 1000; // 30 minutes
+
+          // Only start polling if payment is not too old
+          if (paymentAge < maxAge) {
+            startPolling();
+          }
+        }
       } else {
         setError("Payment not found");
       }
@@ -42,7 +85,76 @@ const PaymentPage: React.FC = () => {
       console.error("Error fetching payment:", err);
       setError(err.message || "Failed to fetch payment data");
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
+    }
+  };
+
+  const isPaymentSuccessful = (status: string) => {
+    return (
+      status?.toLowerCase() === "success" ||
+      status?.toLowerCase() === "settlement" ||
+      status?.toLowerCase() === "capture"
+    );
+  };
+
+  const isPaymentPending = (status: string) => {
+    return status?.toLowerCase() === "pending";
+  };
+
+  const startPolling = () => {
+    if (pollingIntervalRef.current) return;
+
+    setIsPolling(true);
+    let pollCount = 0;
+    const maxPolls = 10; // Maximum 10 polls total
+
+    const poll = () => {
+      pollCount++;
+
+      // Stop polling after max attempts or if payment is successful
+      if (pollCount >= maxPolls || isPaymentSuccessful(paymentData?.status)) {
+        stopPolling();
+        return;
+      }
+
+      fetchPaymentStatus(false); // Don't show loading during polling
+    };
+
+    // Smart polling: start fast, then slow down
+    // First 3 polls: every 2 seconds
+    // Next 4 polls: every 5 seconds
+    // Last 3 polls: every 10 seconds
+    const getPollInterval = (count: number) => {
+      if (count <= 3) return 2000; // 2 seconds
+      if (count <= 7) return 5000; // 5 seconds
+      return 10000; // 10 seconds
+    };
+
+    const scheduleNextPoll = () => {
+      if (pollCount >= maxPolls || isPaymentSuccessful(paymentData?.status)) {
+        stopPolling();
+        return;
+      }
+
+      const interval = getPollInterval(pollCount);
+      pollingIntervalRef.current = setTimeout(() => {
+        poll();
+        scheduleNextPoll();
+      }, interval);
+    };
+
+    // Start with immediate poll
+    poll();
+    scheduleNextPoll();
+  };
+
+  const stopPolling = () => {
+    if (pollingIntervalRef.current) {
+      clearTimeout(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+      setIsPolling(false);
     }
   };
 
@@ -92,10 +204,54 @@ const PaymentPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading payment information...</p>
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header */}
+          <div className="mb-8">
+            <Button
+              variant="ghost"
+              onClick={() => router.back()}
+              className="mb-4"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Button>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Payment Details
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Complete your payment to proceed
+            </p>
+          </div>
+
+          {/* Loading content placeholder */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="space-y-6">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">
+                      Loading payment information...
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Order Summary</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading order details...</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -250,14 +406,16 @@ const PaymentPage: React.FC = () => {
                       <div className="flex items-center space-x-1">
                         {getStatusIcon(paymentData.status)}
                         <span>{paymentData.status?.toUpperCase()}</span>
+                        {isPolling && (
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current ml-1"></div>
+                        )}
                       </div>
                     </Badge>
                   </div>
-                  {paymentData.expiryTime && (
-                    <div className="flex justify-between">
-                      <span>Expires</span>
-                      <span className="text-sm">
-                        {new Date(paymentData.expiryTime).toLocaleString()}
+                  {isPolling && (
+                    <div className="text-center text-xs text-gray-500">
+                      <span>
+                        Auto-checking status... (will stop automatically)
                       </span>
                     </div>
                   )}
@@ -267,13 +425,16 @@ const PaymentPage: React.FC = () => {
 
             {/* Action Buttons */}
             <div className="space-y-3">
-              <Button
-                onClick={fetchPaymentStatus}
-                variant="outline"
-                className="w-full"
-              >
-                Refresh Status
-              </Button>
+              {!isPaymentSuccessful(paymentData.status) && (
+                <Button
+                  onClick={() => fetchPaymentStatus(true)}
+                  variant="outline"
+                  className="w-full"
+                  disabled={isPolling}
+                >
+                  {isPolling ? "Checking..." : "Refresh Status"}
+                </Button>
+              )}
 
               {paymentData.status?.toLowerCase() === "pending" && (
                 <Button
@@ -287,7 +448,7 @@ const PaymentPage: React.FC = () => {
                 </Button>
               )}
 
-              {paymentData.status?.toLowerCase() === "success" && (
+              {isPaymentSuccessful(paymentData.status) && (
                 <Button
                   onClick={() => router.push("/dashboard")}
                   className="w-full"
