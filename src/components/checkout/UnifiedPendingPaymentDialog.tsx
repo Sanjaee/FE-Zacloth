@@ -6,6 +6,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +23,7 @@ import { Separator } from "@/components/ui/separator";
 import { Clock, X, ExternalLink, Coins, CreditCard } from "lucide-react";
 import { formatRupiahWithSymbol } from "@/utils/currencyFormatter";
 import { useToast } from "@/hooks/use-toast";
+import Image from "next/image";
 
 interface UnifiedPendingPaymentDialogProps {
   isOpen: boolean;
@@ -33,6 +44,7 @@ export const UnifiedPendingPaymentDialog: React.FC<
 }) => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = React.useState(false);
 
   const handleCancelPayment = async () => {
     if (!pendingPayment) return;
@@ -40,6 +52,7 @@ export const UnifiedPendingPaymentDialog: React.FC<
     try {
       setIsLoading(true);
       await onCancelPayment(pendingPayment.orderId);
+      setShowCancelConfirm(false);
       toast({
         title: "Payment Cancelled",
         description: "Your pending payment has been cancelled successfully.",
@@ -55,16 +68,19 @@ export const UnifiedPendingPaymentDialog: React.FC<
     }
   };
 
+  const handleCancelClick = () => {
+    setShowCancelConfirm(true);
+  };
+
   const handleRedirectToPayment = () => {
     if (!pendingPayment) return;
 
     if (
       pendingPayment.paymentType === "plisio" &&
-      pendingPayment.snapRedirectUrl &&
-      onRedirectToInvoice
+      pendingPayment.snapRedirectUrl
     ) {
-      // For Plisio payments, redirect to invoice URL
-      onRedirectToInvoice(pendingPayment.snapRedirectUrl);
+      // For Plisio payments, redirect to invoice URL in same tab
+      window.location.href = pendingPayment.snapRedirectUrl;
     } else {
       // For Midtrans payments, redirect to payment page
       onRedirectToPayment(pendingPayment.orderId);
@@ -75,170 +91,140 @@ export const UnifiedPendingPaymentDialog: React.FC<
 
   const isPlisioPayment = pendingPayment.paymentType === "plisio";
   const isMidtransPayment = pendingPayment.paymentType === "midtrans";
+  console.log(pendingPayment);
 
   return (
-    <Dialog open={isOpen} onOpenChange={() => {}}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
-            {isPlisioPayment ? (
-              <Coins className="h-5 w-5 text-orange-500" />
-            ) : (
-              <CreditCard className="h-5 w-5 text-blue-500" />
-            )}
-            <span>
-              {isPlisioPayment ? "Crypto Payment Pending" : "Payment Pending"}
-            </span>
-          </DialogTitle>
-          <DialogDescription>
-            You have a pending {isPlisioPayment ? "crypto" : ""} payment for
-            this product. Complete your payment or cancel it before creating a
-            new one.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={isOpen} onOpenChange={() => {}}>
+        <DialogContent className="max-w-md w-[95vw] max-h-[85vh] overflow-y-auto">
+          <DialogHeader className="space-y-2">
+            <DialogTitle className="flex items-center space-x-2 text-lg">
+              {isPlisioPayment ? (
+                <Coins className="h-5 w-5 text-orange-500 flex-shrink-0" />
+              ) : (
+                <CreditCard className="h-5 w-5 text-blue-500 flex-shrink-0" />
+              )}
+              <span className="truncate">
+                {isPlisioPayment ? "Crypto Payment Pending" : "Payment Pending"}
+              </span>
+            </DialogTitle>
+            <DialogDescription className="text-sm">
+              Complete your payment or cancel it before creating a new one.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Payment Details */}
-          <Card>
-            <CardContent className="pt-4">
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Order ID</span>
-                  <span className="font-mono text-sm">
-                    {pendingPayment.orderId}
-                  </span>
+          <div className="space-y-3">
+            {/* Product Information - Simplified */}
+            {pendingPayment.product && (
+              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                  <Image
+                    src={pendingPayment.product.imageUrl}
+                    alt={pendingPayment.product.name}
+                    fill
+                    className="object-cover"
+                  />
                 </div>
-
-                <Separator />
-
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm">Product</span>
-                    <span className="text-sm font-medium">
-                      {pendingPayment.product?.name}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm">Amount</span>
-                    <span className="text-sm font-medium">
-                      {formatRupiahWithSymbol(pendingPayment.amount)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm">Admin Fee</span>
-                    <span className="text-sm font-medium">
-                      {formatRupiahWithSymbol(pendingPayment.adminFee)}
-                    </span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between font-semibold">
-                    <span>Total</span>
-                    <span>
-                      {formatRupiahWithSymbol(pendingPayment.totalAmount)}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Status</span>
-                  <Badge className="bg-yellow-100 text-yellow-800">
-                    <Clock className="h-3 w-3 mr-1" />
-                    PENDING
-                  </Badge>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Payment Method</span>
-                  <span className="text-sm capitalize flex items-center">
-                    {isPlisioPayment ? (
-                      <Coins className="h-3 w-3 mr-1" />
-                    ) : (
-                      <CreditCard className="h-3 w-3 mr-1" />
-                    )}
-                    {pendingPayment.paymentMethod?.replace("_", " ")}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Payment Type</span>
-                  <Badge
-                    className={
-                      isPlisioPayment
-                        ? "bg-orange-100 text-orange-800"
-                        : "bg-blue-100 text-blue-800"
-                    }
-                  >
-                    {pendingPayment.paymentType?.toUpperCase()}
-                  </Badge>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Created</span>
-                  <span className="text-sm">
-                    {new Date(pendingPayment.createdAt).toLocaleDateString()}
-                  </span>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-sm leading-tight line-clamp-1 break-words">
+                    {pendingPayment.product.name}
+                  </h3>
+                  <p className="text-sm font-bold text-green-600">
+                    {formatRupiahWithSymbol(pendingPayment.totalAmount)}
+                  </p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            )}
 
-          {/* Action Buttons */}
-          <div className="flex space-x-3">
-            <Button
-              onClick={handleRedirectToPayment}
-              className="flex-1"
-              variant="default"
-            >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              {isPlisioPayment ? "Go to Invoice" : "Go to Payment"}
-            </Button>
-            <Button
-              onClick={handleCancelPayment}
-              variant="destructive"
-              className="flex-1"
-              disabled={isLoading}
-            >
-              <X className="h-4 w-4 mr-2" />
-              {isLoading ? "Cancelling..." : "Cancel Payment"}
-            </Button>
-          </div>
+            {/* Payment Details - Simplified */}
+            <div className="space-y-2 p-3 bg-gray-50 rounded-lg">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Order ID</span>
+                <span className="font-mono text-xs">
+                  {pendingPayment.orderId.slice(-8)}
+                </span>
+              </div>
 
-          {/* Info Box */}
-          <div
-            className={`border rounded-lg p-3 ${
-              isPlisioPayment
-                ? "bg-orange-50 border-orange-200"
-                : "bg-blue-50 border-blue-200"
-            }`}
-          >
-            <div className="flex items-start space-x-2">
-              {isPlisioPayment ? (
-                <Coins className="h-4 w-4 text-orange-600 mt-0.5" />
-              ) : (
-                <CreditCard className="h-4 w-4 text-blue-600 mt-0.5" />
-              )}
-              <div
-                className={`text-sm ${
-                  isPlisioPayment ? "text-orange-800" : "text-blue-800"
-                }`}
-              >
-                <p className="font-medium">
-                  {isPlisioPayment ? "Crypto Payment" : "Traditional Payment"}
-                </p>
-                <p
-                  className={
-                    isPlisioPayment ? "text-orange-600" : "text-blue-600"
-                  }
-                >
-                  {isPlisioPayment
-                    ? "Click 'Go to Invoice' to complete your crypto payment using the provided invoice URL."
-                    : "Click 'Go to Payment' to complete your payment using the payment page."}
-                </p>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Status</span>
+                <Badge className="bg-yellow-100 text-yellow-800">
+                  <Clock className="h-3 w-3 mr-1" />
+                  PENDING
+                </Badge>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Payment Method</span>
+                <span className="text-sm capitalize flex items-center">
+                  {isPlisioPayment ? (
+                    <Coins className="h-3 w-3 mr-1" />
+                  ) : (
+                    <CreditCard className="h-3 w-3 mr-1" />
+                  )}
+                  {pendingPayment.paymentMethod?.replace("_", " ")}
+                </span>
               </div>
             </div>
+
+            {/* Action Buttons - Larger */}
+            <div className="flex flex-col space-y-3">
+              <Button
+                onClick={handleRedirectToPayment}
+                className="w-full h-12 text-base font-semibold"
+                variant="default"
+              >
+                <ExternalLink className="h-5 w-5 mr-2" />
+                {isPlisioPayment ? "Go to Invoice" : "Go to Payment"}
+              </Button>
+              <Button
+                onClick={handleCancelClick}
+                variant="destructive"
+                className="w-full h-12 text-base font-semibold"
+                disabled={isLoading}
+              >
+                <X className="h-5 w-5 mr-2" />
+                {isLoading ? "Cancelling..." : "Cancel Payment"}
+              </Button>
+            </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Confirmation Dialog */}
+      <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center space-x-2">
+              <X className="h-5 w-5 text-red-500" />
+              <span>Cancel Payment</span>
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm">
+              Are you sure you want to cancel this payment? This action cannot
+              be undone.
+              {pendingPayment?.product && (
+                <div className="mt-2 p-2 bg-gray-50 rounded text-xs">
+                  <strong>Product:</strong> {pendingPayment.product.name}
+                  <br />
+                  <strong>Amount:</strong>{" "}
+                  {formatRupiahWithSymbol(pendingPayment.totalAmount)}
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+            <AlertDialogCancel className="w-full sm:w-auto">
+              Keep Payment
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancelPayment}
+              className="w-full sm:w-auto bg-red-600 hover:bg-red-700"
+              disabled={isLoading}
+            >
+              {isLoading ? "Cancelling..." : "Yes, Cancel Payment"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };

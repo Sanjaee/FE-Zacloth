@@ -58,20 +58,11 @@ const CheckoutPage: React.FC = () => {
       try {
         setCheckingPendingPayment(true);
 
-        // Check for regular payments (midtrans)
-        const response = (await api.payments.getPendingPayment()) as any;
+        // Use unified API to get pending payment (works for both Midtrans and Plisio)
+        const response = (await api.unifiedPayments.getPendingPayment()) as any;
         if (response.success && response.data) {
           setPendingPayment(response.data);
           setShowPendingDialog(true);
-        }
-
-        // Check for Plisio payments if no midtrans payment found
-        if (!response.success || !response.data) {
-          const plisioResponse = (await api.crypto.getPendingPayment()) as any;
-          if (plisioResponse.success && plisioResponse.data) {
-            setPendingPayment(plisioResponse.data);
-            setShowPendingDialog(true);
-          }
         }
       } catch (error) {
         console.error("Error checking pending payment:", error);
@@ -156,11 +147,10 @@ const CheckoutPage: React.FC = () => {
 
   const handleUnifiedCancelPayment = async (orderId: string) => {
     try {
-      // Determine which API to use based on payment type
-      const isPlisioPayment = pendingPayment?.paymentType === "plisio";
-      const response = isPlisioPayment
-        ? ((await api.crypto.cancelPayment(orderId)) as any)
-        : ((await api.payments.cancelPayment(orderId)) as any);
+      // Use unified API to cancel payment (works for both Midtrans and Plisio)
+      const response = (await api.unifiedPayments.cancelPayment(
+        orderId
+      )) as any;
 
       if (response.success) {
         setPendingPayment(null);

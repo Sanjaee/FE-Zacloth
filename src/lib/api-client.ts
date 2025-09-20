@@ -4,10 +4,16 @@ import { getSession } from "next-auth/react";
 export class ApiClient {
   private baseURL: string;
   private requestQueue: Map<string, Promise<any>> = new Map();
+  private sessionExpiredCallback?: () => void;
 
   constructor() {
     this.baseURL =
       process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+  }
+
+  // Method to set callback for session expiration
+  setSessionExpiredCallback(callback: () => void) {
+    this.sessionExpiredCallback = callback;
   }
 
   private async getAuthHeaders(
@@ -91,6 +97,11 @@ export class ApiClient {
       }
 
       if (!response.ok) {
+        // Check for 401 Unauthorized and trigger session expiration
+        if (response.status === 401 && this.sessionExpiredCallback) {
+          this.sessionExpiredCallback();
+        }
+
         // Try to get error details from response
         let errorMessage = `API Error: ${response.status} ${response.statusText}`;
         try {
@@ -233,6 +244,15 @@ export const api = {
     getPendingPayment: () => apiClient.get("/payments/pending"),
     cancelPayment: (orderId: string) =>
       apiClient.post(`/payments/cancel/${orderId}`),
+  },
+
+  // Unified Payment endpoints (recommended)
+  unifiedPayments: {
+    getPendingPayment: () => apiClient.get("/api/unified-payments/pending"),
+    cancelPayment: (orderId: string) =>
+      apiClient.post(`/api/unified-payments/cancel/${orderId}`),
+    getUserPayments: (userId: string) =>
+      apiClient.get(`/api/unified-payments/user/${userId}`),
   },
   crypto: {
     getCurrencies: () => apiClient.get("/api/plisio/currencies"),

@@ -93,7 +93,8 @@ export const CryptoPaymentDisplay: React.FC<CryptoPaymentDisplayProps> = ({
 
   const handleOpenInvoice = () => {
     if (paymentData.snapRedirectUrl) {
-      window.open(paymentData.snapRedirectUrl, "_blank");
+      // Redirect in same tab instead of opening new tab
+      window.location.href = paymentData.snapRedirectUrl;
     } else {
       toast({
         title: "Error",
