@@ -129,8 +129,16 @@ const CheckoutPage: React.FC = () => {
           setHasAddresses(addressesResponse.hasAddresses);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving address:", error);
+
+      // Show error message to user
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save address",
+        variant: "destructive",
+      });
+
       // Still set local data even if save fails
       setAddressData(data);
     }

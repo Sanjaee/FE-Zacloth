@@ -397,16 +397,20 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
           <img
             src={productData.imageUrl}
             alt={productData.name}
-            className="w-16 h-16 object-cover rounded-lg"
+            className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
           />
-          <div>
-            <h3 className="font-semibold">{productData.name}</h3>
-            <p className="text-sm text-gray-600">Product Price</p>
-          </div>
-          <div className="ml-auto">
-            <p className="font-semibold">
-              {formatRupiahWithSymbol(productPrice)}
-            </p>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-sm leading-tight mb-1 line-clamp-2">
+              {productData.name}
+            </h3>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-600 whitespace-nowrap">
+                Product Price
+              </p>
+              <p className="font-semibold text-sm ml-2">
+                {formatRupiahWithSymbol(productPrice)}
+              </p>
+            </div>
           </div>
         </div>
 
@@ -539,16 +543,6 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
 
                 {selectedPaymentGroup === "crypto" && (
                   <div className="space-y-4">
-                    <div className="text-center p-4 bg-orange-50 rounded-lg mb-4">
-                      <CreditCard className="w-12 h-12 text-orange-600 mx-auto mb-2" />
-                      <h3 className="font-semibold text-orange-900">
-                        Cryptocurrency Payment
-                      </h3>
-                      <p className="text-sm text-orange-700">
-                        Pay with Bitcoin, Ethereum, or other cryptocurrencies
-                      </p>
-                    </div>
-
                     <div className="space-y-3">
                       <Label className="text-sm font-medium">
                         Select Cryptocurrency:

@@ -9,7 +9,7 @@ import { SelectDialog } from "@/components/ui/select-dialog";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/router";
 import { api } from "@/lib/api-client";
-import { Trash2, Edit, Plus } from "lucide-react";
+import { Trash2, Edit } from "lucide-react";
 
 interface AddressFormProps {
   onAddressSubmit: (addressData: any) => void;
@@ -39,7 +39,9 @@ export const AddressForm: React.FC<AddressFormProps> = ({
     districts,
     loading,
     error,
+    fetchProvinces,
     fetchCities,
+    fetchCouriers,
     fetchDistricts,
     getShippingCost,
   } = useRajaOngkir();
@@ -64,6 +66,10 @@ export const AddressForm: React.FC<AddressFormProps> = ({
   const couriersSource = couriers;
   const citiesSource = cities;
 
+  // Track if data has been loaded to avoid unnecessary API calls
+  const [provincesLoaded, setProvincesLoaded] = useState(false);
+  const [couriersLoaded, setCouriersLoaded] = useState(false);
+
   const [shippingData, setShippingData] = useState({
     origin: "501", // Default Yogyakarta
     weight: 1000, // Default 1kg
@@ -73,8 +79,8 @@ export const AddressForm: React.FC<AddressFormProps> = ({
   });
 
   // Toggle compact layout when address is saved
-  const [isAddressSaved, setIsAddressSaved] = useState(hasExistingAddresses);
-  const [showAddressForm, setShowAddressForm] = useState(!hasExistingAddresses);
+  const [isAddressSaved, setIsAddressSaved] = useState(false); // Always start with false
+  const [showAddressForm, setShowAddressForm] = useState(false); // Always start with form hidden
   const [editingAddress, setEditingAddress] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -91,6 +97,14 @@ export const AddressForm: React.FC<AddressFormProps> = ({
       }
     }
   }, [selectedAddress]);
+
+  // Update state when existingAddresses changes
+  useEffect(() => {
+    if (existingAddresses.length > 0) {
+      setIsAddressSaved(true);
+      setShowAddressForm(false);
+    }
+  }, [existingAddresses.length]);
 
   const [selectedCourier, setSelectedCourier] = useState<any>(null);
   const [availableServices, setAvailableServices] = useState<string[]>([]);
@@ -118,6 +132,22 @@ export const AddressForm: React.FC<AddressFormProps> = ({
         cityName: "",
       }));
       fetchCities(provinceId);
+    }
+  };
+
+  // Load provinces when province dialog opens
+  const handleProvinceDialogOpen = (open: boolean) => {
+    setOpenProvince(open);
+    if (open && !provincesLoaded) {
+      fetchProvinces().then(() => setProvincesLoaded(true));
+    }
+  };
+
+  // Load couriers when courier dialog opens
+  const handleCourierDialogOpen = (open: boolean) => {
+    setOpenCourier(open);
+    if (open && !couriersLoaded) {
+      fetchCouriers().then(() => setCouriersLoaded(true));
     }
   };
 
@@ -279,72 +309,11 @@ export const AddressForm: React.FC<AddressFormProps> = ({
       // Create new address
       onAddressSubmit(formData);
       setIsAddressSaved(true);
+      setShowAddressForm(false); // Hide form after saving
       toast({
         title: "Success",
         description: "Address saved successfully",
       });
-    }
-  };
-
-  const handleChangeAddress = () => {
-    // Show full address inputs again
-    setIsAddressSaved(false);
-    setShowAddressForm(true);
-
-    // Reset editing state (in case we were editing before)
-    setEditingAddress(null);
-    setIsEditing(false);
-
-    // Get the current address data (either selectedAddress or formData)
-    const currentAddress = selectedAddress || formData;
-
-    // Pre-fill form with current address data
-    const formDataToSet = {
-      recipientName: currentAddress.recipientName || "",
-      phoneNumber: currentAddress.phoneNumber || "",
-      provinceId: currentAddress.provinceId?.toString() || "",
-      provinceName: currentAddress.provinceName || "",
-      cityId: currentAddress.cityId?.toString() || "",
-      cityName: currentAddress.cityName || "",
-      postalCode: currentAddress.postalCode || "",
-      addressDetail: currentAddress.addressDetail || "",
-      isPrimary: currentAddress.isPrimary || false,
-      subdistrictId: currentAddress.subdistrictId?.toString() || "",
-      subdistrictName: currentAddress.subdistrictName || "",
-    };
-
-    setFormData(formDataToSet);
-
-    // Load cities and districts for the current address
-    if (currentAddress.provinceId) {
-      fetchCities(currentAddress.provinceId.toString());
-    }
-    if (currentAddress.cityId) {
-      fetchDistricts(currentAddress.cityId.toString());
-    }
-
-    // Set destination for shipping calculation
-    const destinationId = currentAddress.subdistrictId || currentAddress.cityId;
-    if (destinationId) {
-      setShippingData((prev) => ({
-        ...prev,
-        destination: destinationId.toString(),
-      }));
-    }
-  };
-
-  const handleSelectExistingAddress = (address: any) => {
-    if (onAddressSelect) {
-      onAddressSelect(address);
-    }
-    // Set destination for shipping calculation
-    // Use subdistrictId if available, otherwise fallback to cityId
-    const destinationId = address.subdistrictId || address.cityId;
-    if (destinationId) {
-      setShippingData((prev) => ({
-        ...prev,
-        destination: destinationId.toString(),
-      }));
     }
   };
 
@@ -373,11 +342,11 @@ export const AddressForm: React.FC<AddressFormProps> = ({
           }
         }
 
-        // Show address form automatically after deletion
+        // Show form after deletion (since only 1 address allowed)
         setIsAddressSaved(false);
-        setShowAddressForm(true);
         setEditingAddress(null);
         setIsEditing(false);
+        setShowAddressForm(true);
 
         // Reset form data
         setFormData({
@@ -430,11 +399,9 @@ export const AddressForm: React.FC<AddressFormProps> = ({
           onAddressesUpdate(updatedAddresses);
         }
 
-        // Update selected address if it was the one being edited
-        if (selectedAddress?.id === editingAddress.id) {
-          if (onAddressSelect) {
-            onAddressSelect(response.address);
-          }
+        // Update selected address (since only 1 address allowed)
+        if (onAddressSelect) {
+          onAddressSelect(response.address);
         }
 
         // Reset editing state
@@ -482,6 +449,14 @@ export const AddressForm: React.FC<AddressFormProps> = ({
     }
     if (address.cityId) {
       fetchDistricts(address.cityId.toString());
+    }
+
+    // Load provinces and couriers if not already loaded
+    if (!provincesLoaded) {
+      fetchProvinces().then(() => setProvincesLoaded(true));
+    }
+    if (!couriersLoaded) {
+      fetchCouriers().then(() => setCouriersLoaded(true));
     }
   };
 
@@ -539,9 +514,6 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                   </Button>
                 </>
               )}
-              <Button variant="outline" onClick={handleChangeAddress}>
-                Change
-              </Button>
             </div>
           </div>
         </CardContent>
@@ -549,97 +521,181 @@ export const AddressForm: React.FC<AddressFormProps> = ({
     );
   };
 
-  const AddressSelector = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle>Select Shipping Address</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {existingAddresses.map((address) => (
-          <div
-            key={address.id}
-            className={`p-3 border rounded-lg transition-colors ${
-              selectedAddress?.id === address.id
-                ? "border-blue-500 bg-blue-50"
-                : "border-gray-200 hover:border-gray-300"
-            }`}
-          >
-            <div
-              className="cursor-pointer"
-              onClick={() => handleSelectExistingAddress(address)}
-            >
-              <div className="text-sm">
-                <div className="font-medium">
-                  {address.recipientName} • {address.phoneNumber}
-                  {address.isPrimary && (
-                    <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                      Primary
-                    </span>
-                  )}
-                </div>
-                <div className="text-gray-600 mt-1">
-                  {address.addressDetail}
-                  {address.subdistrictName
-                    ? `, ${address.subdistrictName}`
-                    : ""}
-                  {address.cityName ? `, ${address.cityName}` : ""}
-                  {address.provinceName ? `, ${address.provinceName}` : ""}
-                  {address.postalCode ? `, ${address.postalCode}` : ""}
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-2 mt-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleEditAddress(address)}
-              >
-                <Edit className="w-4 h-4 mr-1" />
-                Edit
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleDeleteAddress(address.id.toString())}
-              >
-                <Trash2 className="w-4 h-4 mr-1" />
-                Delete
-              </Button>
-            </div>
-          </div>
-        ))}
-        {existingAddresses.length < 2 && (
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => {
-              setEditingAddress(null);
-              setIsEditing(false);
-              setShowAddressForm(true);
-            }}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add New Address
-          </Button>
-        )}
-        {existingAddresses.length >= 2 && (
-          <div className="text-sm text-gray-500 text-center py-2">
-            Maximum of 2 addresses allowed
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-
   return (
     <div className="space-y-6">
       {/* Address Form (collapsible) */}
-      {hasExistingAddresses && !showAddressForm ? (
-        existingAddresses.length === 1 ? (
-          <AddressSummary />
-        ) : (
-          <AddressSelector />
-        )
+      {showAddressForm ? (
+        <Card className={isEditing ? "border-blue-500 bg-blue-50" : ""}>
+          <CardHeader>
+            <CardTitle className={isEditing ? "text-blue-700" : ""}>
+              {isEditing ? "✏️ Edit Shipping Address" : "Shipping Address"}
+            </CardTitle>
+            {isEditing && (
+              <p className="text-sm text-blue-600 mt-1">
+                Editing address for {editingAddress?.recipientName}
+              </p>
+            )}
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="recipientName">Recipient Name *</Label>
+                <Input
+                  id="recipientName"
+                  value={formData.recipientName}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      recipientName: e.target.value,
+                    }))
+                  }
+                  placeholder="Enter recipient name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="phoneNumber">Phone Number *</Label>
+                <Input
+                  id="phoneNumber"
+                  value={formData.phoneNumber}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      phoneNumber: e.target.value,
+                    }))
+                  }
+                  placeholder="Enter phone number"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="province">Province *</Label>
+                <SelectDialog
+                  open={openProvince}
+                  onOpenChange={handleProvinceDialogOpen}
+                  options={provincesSource}
+                  selectedValue={formData.provinceId}
+                  onSelect={(option) =>
+                    handleProvinceChange(option.id?.toString() || "")
+                  }
+                  placeholder="Select province..."
+                  title="Select Province"
+                  searchPlaceholder="Search province..."
+                  displayValue={formData.provinceName}
+                />
+              </div>
+              <div>
+                <Label htmlFor="city">City *</Label>
+                <SelectDialog
+                  open={openCity}
+                  onOpenChange={setOpenCity}
+                  options={citiesSource}
+                  selectedValue={formData.cityId}
+                  onSelect={(option) =>
+                    handleCityChange(option.id?.toString() || "")
+                  }
+                  placeholder="Select city..."
+                  title="Select City"
+                  searchPlaceholder="Search city..."
+                  disabled={!formData.provinceId}
+                  displayValue={formData.cityName}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="district">District *</Label>
+                <SelectDialog
+                  open={openDistrict}
+                  onOpenChange={setOpenDistrict}
+                  options={districts}
+                  selectedValue={(formData as any).subdistrictId}
+                  onSelect={(option) =>
+                    handleDistrictChange(
+                      option.id?.toString() || "",
+                      option.name
+                    )
+                  }
+                  placeholder="Select district..."
+                  title="Select District"
+                  searchPlaceholder="Search district..."
+                  disabled={!formData.cityId}
+                  displayValue={(formData as any).subdistrictName}
+                />
+              </div>
+              <div />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="postalCode">Postal Code</Label>
+                <Input
+                  id="postalCode"
+                  value={formData.postalCode}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      postalCode: e.target.value,
+                    }))
+                  }
+                  placeholder="Postal code"
+                />
+              </div>
+              <div>
+                <Label htmlFor="weight">Package Weight (gram)</Label>
+                <Input
+                  id="weight"
+                  type="number"
+                  value={shippingData.weight}
+                  onChange={(e) =>
+                    setShippingData((prev) => ({
+                      ...prev,
+                      weight: parseInt(e.target.value) || 1000,
+                    }))
+                  }
+                  placeholder="Weight in grams"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="addressDetail">Address Detail *</Label>
+              <Input
+                id="addressDetail"
+                value={formData.addressDetail}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    addressDetail: e.target.value,
+                  }))
+                }
+                placeholder="Enter detailed address"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <Button onClick={handleSubmitAddress} className="flex-1">
+                {isEditing ? "Update Address" : "Save Address"}
+              </Button>
+              {isEditing && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setEditingAddress(null);
+                    setIsEditing(false);
+                    setShowAddressForm(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ) : existingAddresses.length > 0 ? (
+        <AddressSummary />
       ) : isAddressSaved ? (
         <AddressSummary />
       ) : (
@@ -691,7 +747,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                 <Label htmlFor="province">Province *</Label>
                 <SelectDialog
                   open={openProvince}
-                  onOpenChange={setOpenProvince}
+                  onOpenChange={handleProvinceDialogOpen}
                   options={provincesSource}
                   selectedValue={formData.provinceId}
                   onSelect={(option) =>
@@ -825,7 +881,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
               <Label htmlFor="courier">Courier *</Label>
               <SelectDialog
                 open={openCourier}
-                onOpenChange={setOpenCourier}
+                onOpenChange={handleCourierDialogOpen}
                 options={couriersSource}
                 selectedValue={shippingData.courier}
                 onSelect={(option) => handleCourierChange(option.code || "")}

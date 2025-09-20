@@ -153,10 +153,11 @@ export const useRajaOngkir = () => {
     }
   };
 
-  useEffect(() => {
-    fetchProvinces();
-    fetchCouriers();
-  }, []);
+  // Remove automatic fetching - let components call these manually when needed
+  // useEffect(() => {
+  //   fetchProvinces();
+  //   fetchCouriers();
+  // }, []);
 
   return {
     provinces,
@@ -165,7 +166,9 @@ export const useRajaOngkir = () => {
     districts,
     loading,
     error,
+    fetchProvinces,
     fetchCities,
+    fetchCouriers,
     fetchDistricts,
     getShippingCost,
   };
