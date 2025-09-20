@@ -138,6 +138,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
   // Load provinces when province dialog opens
   const handleProvinceDialogOpen = (open: boolean) => {
     setOpenProvince(open);
+    // Only fetch provinces when dialog is opened and not already loaded
     if (open && !provincesLoaded) {
       fetchProvinces().then(() => setProvincesLoaded(true));
     }
@@ -146,6 +147,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
   // Load couriers when courier dialog opens
   const handleCourierDialogOpen = (open: boolean) => {
     setOpenCourier(open);
+    // Only fetch couriers when dialog is opened and not already loaded
     if (open && !couriersLoaded) {
       fetchCouriers().then(() => setCouriersLoaded(true));
     }
@@ -182,12 +184,63 @@ export const AddressForm: React.FC<AddressFormProps> = ({
     }
   };
 
-  // Handle service selection
-  const handleServiceChange = (service: string) => {
+  // Handle service selection with auto-calculate
+  const handleServiceChange = async (service: string) => {
     setShippingData((prev) => ({
       ...prev,
       service,
     }));
+
+    // Auto-calculate shipping cost when service is selected
+    if (shippingData.destination && shippingData.courier) {
+      try {
+        const result = await getShippingCost(
+          shippingData.origin,
+          shippingData.destination,
+          shippingData.weight,
+          shippingData.courier
+        );
+
+        if (result && Array.isArray(result)) {
+          // Find the cost for the selected service
+          const selectedService = result.find(
+            (item: any) => item.code === shippingData.courier
+          );
+
+          onShippingCalculate({
+            ...shippingData,
+            service: selectedService?.service || service,
+            cost: selectedService?.cost || 0,
+            etd: selectedService?.etd || "2-3 hari",
+          });
+
+          toast({
+            title: "Success",
+            description: "Shipping cost calculated automatically",
+          });
+        }
+      } catch (err: any) {
+        console.error("Auto shipping cost error:", err);
+
+        // Handle specific error cases
+        if (
+          err.message?.includes("401") ||
+          err.message?.includes("Unauthorized")
+        ) {
+          toast({
+            title: "Authentication Error",
+            description: "Your session has expired. Please login again.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to calculate shipping cost automatically.",
+            variant: "destructive",
+          });
+        }
+      }
+    }
   };
 
   // Handle district selection
@@ -915,22 +968,6 @@ export const AddressForm: React.FC<AddressFormProps> = ({
               />
             </div>
           </div>
-
-          <Button
-            onClick={handleCalculateShipping}
-            className="w-full"
-            disabled={
-              !shippingData.destination ||
-              !shippingData.courier ||
-              !shippingData.service ||
-              loading ||
-              status === "loading"
-            }
-          >
-            {loading || status === "loading"
-              ? "Loading..."
-              : "Calculate Shipping Cost"}
-          </Button>
         </CardContent>
       </Card>
     </div>
