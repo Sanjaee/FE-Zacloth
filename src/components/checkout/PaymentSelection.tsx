@@ -251,9 +251,6 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
 
   // Monitor shipping data changes for loading state
   useEffect(() => {
-    console.log("Shipping data changed:", shippingData);
-    console.log("Current calculating state:", isCalculatingShipping);
-
     // Show skeleton when service is selected but we're waiting for cost calculation
     if (
       shippingData?.service &&
@@ -261,12 +258,10 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
     ) {
       // Check if we have all required data for calculation
       if (shippingData?.destination && shippingData?.courier) {
-        console.log("Setting calculating to true");
         setIsCalculatingShipping(true);
       }
     } else if (shippingData?.cost && shippingData?.cost > 0) {
       // Cost is calculated and has a value
-      console.log("Setting calculating to false");
       setIsCalculatingShipping(false);
     }
   }, [shippingData]);
@@ -750,15 +745,6 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
                       selectedPaymentGroup === "bank" ? "block" : "hidden"
                     }`}
                   >
-                    <div className="text-center p-4 bg-green-50 rounded-lg mb-4">
-                      <Building2 className="w-12 h-12 text-green-600 mx-auto mb-2" />
-                      <h3 className="font-semibold text-green-900">
-                        Bank Transfer
-                      </h3>
-                      <p className="text-sm text-green-700">
-                        Virtual Account payment
-                      </p>
-                    </div>
 
                     <div className="space-y-2">
                       <Label className="text-sm font-medium">
@@ -866,10 +852,6 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
         <Separator />
 
         {/* Cost Breakdown */}
-        {console.log(
-          "Rendering cost breakdown, isCalculatingShipping:",
-          isCalculatingShipping
-        )}
         {isCalculatingShipping ? (
           <CostBreakdownSkeleton />
         ) : (
