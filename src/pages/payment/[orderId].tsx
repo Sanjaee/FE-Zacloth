@@ -29,7 +29,7 @@ const PaymentPage: React.FC = () => {
   const fetchPaymentStatus = async () => {
     try {
       setLoading(true);
-      const response = (await api.payments.getPaymentStatus(
+      const response = (await api.unifiedPayments.getPaymentStatus(
         orderId as string
       )) as any;
 

@@ -233,39 +233,24 @@ export const api = {
       apiClient.delete(`/rajaongkir/addresses/${addressId}`),
   },
 
-  // Payment endpoints
-  payments: {
-    createProductPayment: (paymentData: any) =>
-      apiClient.post("/payments/create-product-payment", paymentData),
-    getPaymentStatus: (orderId: string) =>
-      apiClient.get(`/payments/status/${orderId}`),
-    getUserPayments: (userId: string) =>
-      apiClient.get(`/payments/user/${userId}`),
-    getPendingPayment: () => apiClient.get("/payments/pending"),
-    cancelPayment: (orderId: string) =>
-      apiClient.post(`/payments/cancel/${orderId}`),
-  },
-
-  // Unified Payment endpoints (recommended)
+  // Unified Payment endpoints (handles both Midtrans and Plisio)
   unifiedPayments: {
+    createProductPayment: (paymentData: any) =>
+      apiClient.post(
+        "/api/unified-payments/create-product-payment",
+        paymentData
+      ),
+    getPaymentStatus: (orderId: string) =>
+      apiClient.get(`/api/unified-payments/status/${orderId}`),
     getPendingPayment: () => apiClient.get("/api/unified-payments/pending"),
     cancelPayment: (orderId: string) =>
       apiClient.post(`/api/unified-payments/cancel/${orderId}`),
     getUserPayments: (userId: string) =>
       apiClient.get(`/api/unified-payments/user/${userId}`),
   },
+
+  // Crypto-specific endpoints (only for currencies)
   crypto: {
     getCurrencies: () => apiClient.get("/api/plisio/currencies"),
-    createProductPayment: (paymentData: any) =>
-      apiClient.post("/api/plisio/create-product-payment", paymentData),
-    getPaymentStatus: (orderId: string) =>
-      apiClient.get(`/api/plisio/payment-status/${orderId}`),
-    checkPaymentStatus: (data: any) =>
-      apiClient.post("/api/plisio/check-payment-status", data),
-    getUserPayments: (userId: string) =>
-      apiClient.get(`/api/plisio/user-payments/${userId}`),
-    getPendingPayment: () => apiClient.get("/api/plisio/pending-payment"),
-    cancelPayment: (orderId: string) =>
-      apiClient.post(`/api/plisio/cancel-payment/${orderId}`),
   },
 };

@@ -300,8 +300,8 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
           return;
         }
 
-        // Create crypto payment using Plisio
-        const response = (await api.crypto.createProductPayment({
+        // Create crypto payment using unified API
+        const response = (await api.unifiedPayments.createProductPayment({
           productId: productData.id,
           addressId: addressData.id,
           origin: shippingData.origin,
@@ -313,6 +313,7 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
           shippingCost: shippingCost,
           adminFee: adminFee,
           totalAmount: totalAmount,
+          paymentMethod: "crypto",
           currency: selectedCurrency,
         })) as any;
 
@@ -358,7 +359,7 @@ export const PaymentSelection: React.FC<PaymentSelectionProps> = ({
         bank: finalPaymentMethod === "bank_transfer" ? bank : undefined,
       };
 
-      const response = (await api.payments.createProductPayment(
+      const response = (await api.unifiedPayments.createProductPayment(
         paymentData
       )) as any;
 
